@@ -1,0 +1,28 @@
+.botanical-wind {
+  transform-box: view-box;
+  transform-origin: 60px 130px;
+  animation: botanical-sway var(--wind-duration) ease-in-out var(--wind-delay) infinite;
+}
+
+.botanical-wind-branch {
+  animation: botanical-flutter var(--flutter-duration) ease-in-out var(--flutter-delay) infinite;
+}
+
+/* Biased gusts bend with the wind, then relax toward the anchored base. */
+@keyframes botanical-sway {
+  0%, 100% { transform: translate(calc(var(--wind-x) * .2), calc(var(--wind-y) * .2)) skewX(calc(var(--wind-lean) * .2)); }
+  28% { transform: translate(calc(var(--wind-x) * .75), calc(var(--wind-y) * .75)) skewX(calc(var(--wind-lean) * .75)); }
+  48% { transform: translate(calc(var(--wind-x) * .4), calc(var(--wind-y) * .4)) skewX(calc(var(--wind-lean) * .4)); }
+  72% { transform: translate(var(--wind-x), var(--wind-y)) skewX(var(--wind-lean)); }
+}
+
+@keyframes botanical-flutter {
+  0%, 100% { transform: translate(0, 0); }
+  40% { transform: translate(var(--flutter-x), var(--flutter-y)); }
+  75% { transform: translate(calc(var(--flutter-x) * .3), calc(var(--flutter-y) * .3)); }
+}
+
+.control-select { grid-template-columns: 1fr; }
+
+/* Wind is off by default. Enabling it is an explicit motion opt-in, including
+   with reduced motion enabled; the toggle must remain authoritative. */

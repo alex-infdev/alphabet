@@ -1,0 +1,78 @@
+.toast {
+  position:fixed;
+  bottom:27px;
+  left:50%;
+  transform:translate(-50%,12px);
+  opacity:0;
+  pointer-events:none;
+  max-width:calc(100vw - 32px);
+  padding:13px 21px;
+  background:var(--ink);
+  color:var(--paper);
+  font-size:12px;
+  text-align:center;
+  transition:opacity .2s,transform .2s;
+  z-index:20
+}
+
+.toast.visible {
+  opacity:1;
+  transform:translate(-50%,0)
+}
+
+dialog {
+  background:var(--paper);
+  color:var(--ink);
+  border:1px solid var(--line);
+  padding:48px;
+  width:min(550px,calc(100vw - 32px));
+  max-height:85svh
+}
+
+dialog::backdrop {
+  background:var(--backdrop);
+  backdrop-filter:blur(4px)
+}
+
+.dialog-close {
+  position:absolute;
+  right:16px;
+  top:16px
+}
+
+.dialog-content h2 {
+  font-size:40px;
+  line-height:1.1;
+  font-weight:450;
+  letter-spacing:-1.7px;
+  margin:20px 0
+}
+
+.dialog-content>p:not(.eyebrow) {
+  font-size:13px;
+  line-height:1.8;
+  color:var(--muted)
+}
+
+.about-shortcuts {
+  font-size:12px;
+  line-height:2.5;
+  border-top:1px solid var(--line);
+  margin-top:22px;
+  padding-top:18px
+}
+
+.about-shortcuts kbd {
+  min-width:44px;
+  margin-right:12px
+}
+
+.config-fallback {
+  width:100%;
+  height:300px;
+  background:transparent;
+  border:1px solid var(--line);
+  font:12px/1.5 var(--mono);
+  padding:12px
+}
+

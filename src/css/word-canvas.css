@@ -1,0 +1,16 @@
+.word-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 0 0 12px; }
+.word-input-label { display: flex; align-items: center; gap: 10px; font-size: 11px; }
+.word-input-label input { max-width: 230px; letter-spacing: 2px; }
+#word-help { font-size: 10px; color: var(--muted); }
+.alphabet.word-canvas { display: flex; align-items: center; overflow-x: auto; overflow-y: hidden; padding: 12px 0; min-height: 300px; }
+.word-svg { display: block; width: 100%; flex-shrink: 0; max-height: 100%; }
+.pixel { touch-action: none; cursor: grab; }
+.pixel:active { cursor: grabbing; }
+.reset-positions { text-align: left; margin: 0 0 18px; }
+@media (max-width: 600px) {
+  .word-toolbar { gap: 10px; }
+  .word-input-label { flex: 1; }
+  .word-input-label input { width: 100%; }
+  #word-help { flex-basis: 100%; }
+}
+

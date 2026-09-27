@@ -1,0 +1,122 @@
+.pixel-shape {
+  fill:var(--ink);
+  transition:fill .12s
+}
+
+.pixel {
+  cursor:pointer;
+  outline:none
+}
+
+.pixel:hover .pixel-shape {
+  fill:var(--muted)
+}
+
+.pixel-outline {
+  fill:none;
+  stroke:var(--muted);
+  stroke-width:.8;
+  opacity:0;
+  pointer-events:none
+}
+
+.pixel.is-selected .pixel-shape {
+  fill:var(--accent)
+}
+
+.pixel.is-selected .pixel-outline,.pixel:focus-visible .pixel-outline {
+  opacity:1
+}
+
+.pixel:focus-visible .pixel-outline {
+  stroke-width:1.5;
+  stroke:var(--ink)
+}
+
+.pixel-editor {
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  padding:18px 0 14px;
+  margin:0 0 22px
+}
+
+.pixel-editor .section-label {
+  font-size:8px;
+  letter-spacing:.7px;
+  margin-bottom:14px
+}
+
+.selected-count {
+  letter-spacing:0
+}
+
+.scope-label {
+  font-size:11px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-bottom:15px;
+  color:var(--muted)
+}
+
+select {
+  width:100%;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:0;
+  color:var(--ink);
+  padding:8px;
+  font-size:12px
+}
+
+.pixel-editor .control {
+  margin-bottom:12px
+}
+
+.selection-help {
+  font-size:11px;
+  color:var(--muted);
+  line-height:1.6;
+  margin:0
+}
+
+.clear-selection {
+  font-size:11px;
+  margin-top:6px
+}
+
+.alphabet.is-focused {
+  grid-template-columns:1fr;
+  align-content:center;
+  justify-items:center;
+  padding:40px 12%;
+  min-height:550px
+}
+
+.is-focused .glyph-cell {
+  width:min(100%,420px)
+}
+
+.is-focused .glyph-svg {
+  max-height:520px
+}
+
+.is-focused .glyph-open {
+  font-size:12px;
+  padding-top:20px
+}
+
+.is-focused .glyph-art-button,.is-focused .glyph-open {
+  cursor:default
+}
+
+.is-focused .focus-symbol {
+  display:none
+}
+
+.back-button {
+  font-size:11px;
+  white-space:nowrap
+}
+
+

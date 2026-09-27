@@ -26,7 +26,7 @@ export function exportSvg(style: AlphabetStyle, state: StyleState, options: SvgE
   const description = svgElement('desc');
   description.textContent = 'Alphabet Lab. Editable vector artwork. Botanical characters remain text in Courier New, with a monospace fallback. Exported in the still pose.';
   const metadata = svgElement('metadata');
-  metadata.textContent = JSON.stringify({ version: 1, style: style.id, letters, word: options.word, parameters: state.params, pixelEdits: state.edits, pixelPositions: state.positions });
+  metadata.textContent = JSON.stringify({ version: 2, style: style.id, letters, word: options.word, parameters: state.params, pixelEdits: state.edits, pixelPositions: state.positions });
   svg.append(title, description, metadata);
   if (options.background) svg.append(svgElement('rect', { width, height, fill: options.background }));
 

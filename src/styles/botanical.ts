@@ -1,4 +1,4 @@
-import type { AlphabetStyle, RenderContext } from '../types';
+import type { AlphabetStyle, RenderContext, TypedStyle, BotanicalParameters } from '../types';
 import { seededRandom } from '../utils/random';
 import { glyphSvg, svgElement } from '../utils/svg';
 import { SKELETONS } from './glyphs';
@@ -68,7 +68,7 @@ export const botanical: AlphabetStyle = {
   id: 'botanical', name: 'Botanical ASCII', subtitle: 'An alphabet, grown from characters.',
   description: 'Tiny characters. Organic rules. A living alphabet that grows a little differently every time.',
   material: 'CHARACTERS / ORGANIC',
-  defaults: { characters: '', density: 0.72, growth: 0.6, branching: 0.45, flowers: 0.42, distortion: 0.45, spacing: 14, rowSpacing: 16, scale: 0.95, lineHeight: 1, seed: 2048, labels: true, windEnabled: false, windIntensity: 40, windDirection: 'left', windSpeed: 1 },
+  defaults: { characters: '', density: 0.72, growth: 0.6, branching: 0.45, flowers: 0.42, distortion: 0.45, spacing: 14, rowSpacing: 16, scale: 0.95, lineHeight: 1, seed: 2048, labels: true, windEnabled: false, windIntensity: 40, windDirection: 'left', windSpeed: 1 } satisfies BotanicalParameters,
   controls: [
     { type: 'text', key: 'characters', label: 'ASCII character palette', help: 'Visible ASCII only. Leave empty for the botanical mix.', sanitize: cleanAscii },
     { type: 'toggle', key: 'windEnabled', label: 'Animate wind', group: 'wind' },
@@ -92,7 +92,7 @@ export const botanical: AlphabetStyle = {
     { type: 'number', key: 'seed', label: 'Random seed', min: 0, max: 999999, step: 1 },
     { type: 'toggle', key: 'labels', label: 'Show letter labels', group: 'layout' },
     { type: 'action', key: 'regenerate', label: 'Regenerate' },
-  ],
+  ] satisfies TypedStyle<BotanicalParameters>['controls'],
   renderGlyph,
   randomize: random => ({ density: 0.45 + random() * 0.5, growth: 0.2 + random() * 0.8, branching: random(), flowers: 0.15 + random() * 0.8, distortion: random() * 0.85 }),
 };

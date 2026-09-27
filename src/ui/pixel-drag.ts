@@ -1,4 +1,5 @@
 import type { StyleState } from '../types';
+import { constrainPixelOffset } from '../utils/pixel-grid';
 import { pixelPosition } from '../utils/composition';
 
 export function enablePixelDragging(container: HTMLElement, options: {
@@ -10,6 +11,11 @@ export function enablePixelDragging(container: HTMLElement, options: {
   type Target = { id: string; element: SVGGElement; inverse: DOMMatrix; start: DOMPoint; offset: { x: number; y: number }; previous?: { x: number; y: number } };
   let drag: { pointer: number; id: string; x: number; y: number; moved: boolean; additive: boolean; state: StyleState; targets: Target[] } | null = null;
   let suppressClick = false;
+  // SVG descendants do not reliably establish touch-action regions in Chromium.
+  // Cancel native panning only when the gesture starts on an editable module.
+  container.addEventListener('touchstart', event => {
+    if ((event.target as Element).closest('[data-pixel]')) event.preventDefault();
+  }, { passive: false });
   container.addEventListener('pointerdown', event => {
     const pixel = (event.target as Element).closest<SVGGElement>('[data-pixel]');
     if (!pixel || event.button !== 0 || !event.isPrimary) return;
@@ -36,8 +42,8 @@ export function enablePixelDragging(container: HTMLElement, options: {
     drag.state.positions ??= {};
     for (const target of drag.targets) {
       const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(target.inverse);
-      const x = Math.max(-40, Math.min(40, target.offset.x + point.x - target.start.x));
-      const y = Math.max(-40, Math.min(40, target.offset.y + point.y - target.start.y));
+      const x = constrainPixelOffset(drag.state, target.offset.x + point.x - target.start.x);
+      const y = constrainPixelOffset(drag.state, target.offset.y + point.y - target.start.y);
       drag.state.positions[target.id] = { x, y };
       target.element.setAttribute('transform', `translate(${x} ${y})`);
     }

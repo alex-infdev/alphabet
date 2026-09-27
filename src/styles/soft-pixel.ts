@@ -1,4 +1,4 @@
-import type { AlphabetStyle, RenderContext } from '../types';
+import type { AlphabetStyle, RenderContext, TypedStyle, SoftPixelParameters } from '../types';
 import { seededRandom } from '../utils/random';
 import { glyphSvg, svgElement } from '../utils/svg';
 import { BITMAPS } from './glyphs';
@@ -41,8 +41,9 @@ export const softPixel: AlphabetStyle = {
   id: 'soft-pixel', name: 'Soft Pixel', subtitle: 'Small modules. Infinite expressions.',
   description: 'A geometric alphabet with a softer side. Select a module, reshape a letter, make it your own.',
   material: 'MODULES / GEOMETRIC', editablePixels: true,
-  defaults: { pixelSize: 13, gap: 1, radius: 0.5, scale: 0.95, spacing: 14, rowSpacing: 16, jitter: 0, rotation: 0, seed: 2048, labels: true },
+  defaults: { snapToGrid: false, pixelSize: 13, gap: 1, radius: 0.5, scale: 0.95, spacing: 14, rowSpacing: 16, jitter: 0, rotation: 0, seed: 2048, labels: true } satisfies SoftPixelParameters,
   controls: [
+    { type: 'toggle', key: 'snapToGrid', label: 'Snap to grid (5 units)' },
     { type: 'range', key: 'pixelSize', label: 'Pixel size', min: 7, max: 16, step: 0.1, unit: 'px' },
     { type: 'range', key: 'gap', label: 'Module gap', min: 0, max: 3, step: 0.1, unit: 'px' },
     { type: 'range', key: 'radius', label: 'Corner radius', min: 0, max: 1, step: 0.01 },
@@ -54,7 +55,7 @@ export const softPixel: AlphabetStyle = {
     { type: 'number', key: 'seed', label: 'Random seed', min: 0, max: 999999, step: 1 },
     { type: 'toggle', key: 'labels', label: 'Show letter labels', group: 'layout' },
     { type: 'action', key: 'regenerate', label: 'Regenerate' },
-  ],
+  ] satisfies TypedStyle<SoftPixelParameters>['controls'],
   renderGlyph,
   randomize: random => ({ radius: 0.2 + random() * 0.7, jitter: random() * 4, rotation: random() * 14, gap: random() * 2 }),
 };

@@ -1,3 +1,6 @@
+import { persistence } from './persistence';
+import { enableKeyboard } from './ui/keyboard';
+import { nudgePixels } from './ui/pixel-editing';
 import './style.css';
 import './layout.css';
 import { styles } from './styles';
@@ -5,11 +8,15 @@ import { LETTERS, pixelIds } from './styles/glyphs';
 import { initialState, sanitizeParams, STORAGE_KEY } from './state';
 import { newSeed, seededRandom } from './utils/random';
 import { createControls } from './ui/controls';
-import { renderAlphabet } from './ui/renderer';
+import { renderAlphabet, invalidateAlphabet } from './ui/renderer';
 import { renderWord } from './ui/word-renderer';
 import { enablePixelDragging } from './ui/pixel-drag';
-import { cleanWord, instanceOf, letterOf, pixelPosition, pixelScale, wordInstances } from './utils/composition';
-import { exportSvg, downloadSvg } from './utils/export-svg';
+import { cleanWord, instanceOf, letterOf, pixelScale, wordInstances } from './utils/composition';
+import { createDialogs } from './ui/dialogs';
+import { History } from './history';
+import { parseConfiguration } from './configuration';
+import { pixelNavigation } from './ui/pixel-navigation';
+import { pruneWordEdits } from './utils/composition';
 import type { Scope } from './types';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -27,7 +34,28 @@ try {
 document.documentElement.dataset.theme = theme;
 let stored: string | null = null;
 try { stored = localStorage.getItem(STORAGE_KEY); } catch { /* The playground also works with storage disabled. */ }
-const saved = initialState(styles, stored);
+let saved = initialState(styles, stored);
+let startupError = '';
+if (location.hash.startsWith('#config=')) {
+  try { saved = parseConfiguration(decodeURIComponent(location.hash.slice(8)), styles); }
+  catch (error) { startupError = (error as Error).message; }
+}
+const history = new History(saved);
+let historyGroup = '';
+function record(): void {
+  history.record(saved, historyGroup);
+  el<HTMLButtonElement>('[data-action="undo"]').disabled = !history.canUndo;
+  el<HTMLButtonElement>('[data-action="redo"]').disabled = !history.canRedo;
+}
+function restoreHistory(redo: boolean): void {
+  record();
+  const snapshot = redo ? history.redo() : history.undo();
+  if (!snapshot) return;
+  saved = snapshot; active = styles.findIndex(item => item.id === saved.activeStyle);
+  for (const selected of selections.values()) selected.clear();
+  currentLetter = saved.wordMode ? wordInstances(saved.word)[0] : focused ?? 'A';
+  historyGroup = ''; updateView(); notify(redo ? 'Change redone; selection cleared' : 'Change undone; selection cleared');
+}
 let active = styles.findIndex(style => style.id === saved.activeStyle);
 let focused: string | null = null;
 let currentLetter = 'A';
@@ -37,7 +65,7 @@ let panelHidden = false;
 let layoutOpen = false;
 let windOpen = true;
 let frame = 0;
-let saveTimer = 0;
+const scheduleSave = persistence(() => saved);
 let toastTimer = 0;
 const style = () => styles[active];
 const state = () => saved.styles[style().id];
@@ -68,13 +96,13 @@ app.innerHTML = `
       <aside id="control-panel" class="control-panel" aria-label="Style controls">
         <div class="panel-heading"><h2>Make it your own</h2><span aria-hidden="true">↙</span></div>
         <p class="panel-description"></p>
-        <section class="pixel-editor" hidden aria-label="Pixel editing"><div class="section-label">EDITING SCOPE <span class="selected-count"></span></div><label class="scope-label">Apply scale to<select id="scope"><option value="selection">Selected pixels</option><option value="letter">Current letter</option><option value="alphabet">Entire alphabet</option></select></label><label class="scope-label letter-picker">Current letter<select id="current-letter">${LETTERS.map(letter => `<option>${letter}</option>`).join('')}</select></label><div id="selection-scale"></div><p class="selection-help"></p><button class="text-button clear-selection" data-action="deselect">Clear selection</button></section>
+        <section class="pixel-editor" hidden aria-label="Pixel editing"><div class="section-label">EDITING SCOPE <span class="selected-count"></span></div><label class="scope-label">Apply scale to<select id="scope"><option value="selection">Selected pixels</option><option value="letter">Current letter</option><option value="alphabet">Entire alphabet</option></select></label><label class="scope-label letter-picker">Current letter<select id="current-letter">${LETTERS.map(letter => `<option>${letter}</option>`).join('')}</select></label><div id="selection-scale"></div><p class="selection-help" role="status"></p><p id="pixel-instructions" class="panel-footnote">Tab enters the pixel canvas. Alt + arrows moves focus; Enter or Space selects. Shift adds to selection. Arrow keys nudge; Shift moves 5 steps. With Snap to grid, each step is 5 units.</p><button class="text-button clear-selection" data-action="deselect">Clear selection</button></section>
         <div class="section-label parameters-heading">FORM & CHARACTER <span>↕</span></div>
         <button class="text-button reset-positions" data-action="reset-positions" hidden>Restore pixel positions</button>
         <div id="parameters"></div>
-        <div class="secondary-actions"><button class="text-button" data-action="randomize">↝ Randomize</button><button class="text-button" data-action="reset">↺ Reset</button></div>
+        <div class="secondary-actions"><button class="text-button" data-action="undo" disabled>Undo</button><button class="text-button" data-action="redo" disabled>Redo</button></div><div class="secondary-actions"><button class="text-button" data-action="randomize">↝ Randomize</button><button class="text-button" data-action="reset">↺ Reset</button></div>
         <button class="copy-button" data-action="copy"><span>Copy configuration</span><span aria-hidden="true">↗</span></button>
-        <button class="copy-button" data-action="export"><span>Export SVG</span><span aria-hidden="true">↓</span></button>
+        <button class="copy-button" data-action="configuration">Import / save configuration</button><button class="copy-button" data-action="export"><span>Export SVG</span><span aria-hidden="true">↓</span></button>
         <p class="panel-footnote">A small change. A different alphabet.</p>
       </aside>
     </div>
@@ -83,6 +111,8 @@ app.innerHTML = `
   <div class="toast" role="status" aria-live="polite"></div>
   <dialog class="about-dialog"><button class="dialog-close icon-button" data-action="close-dialog" aria-label="Close dialog">×</button><div class="dialog-content"></div></dialog>
 `;
+
+const refreshPixelNavigation = pixelNavigation(el('#alphabet'));
 
 function el<T extends HTMLElement = HTMLElement>(selector: string): T { return app.querySelector<T>(selector)!; }
 function applyTheme(): void {
@@ -99,12 +129,15 @@ function notify(message: string): void {
   clearTimeout(toastTimer); toastTimer = window.setTimeout(() => el('.toast').classList.remove('visible'), 2400);
 }
 function persist(): void {
-  clearTimeout(saveTimer);
-  saveTimer = window.setTimeout(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); } catch { /* Persistence is optional. */ } }, 200);
+  record();
+  scheduleSave();
 }
 function draw(): void {
+  const pixelId = (document.activeElement as SVGElement | null)?.dataset?.pixel;
   if (saved.wordMode) renderWord(el('#alphabet'), style(), state(), selection(), saved.word);
   else renderAlphabet(el('#alphabet'), style(), state(), selection(), focused);
+  refreshPixelNavigation();
+  if (pixelId) [...el('#alphabet').querySelectorAll<SVGElement>('[data-pixel]')].find(pixel => pixel.dataset.pixel === pixelId)?.focus({ preventScroll: true });
   el('.seed-stamp').textContent = `SEED ${String(state().params.seed).padStart(6, '0')}`;
 }
 function requestDraw(): void {
@@ -197,6 +230,7 @@ function focusLetter(letter: string): void {
   if (matchMedia('(max-width: 600px)').matches) el('.specimen').scrollIntoView({ block: 'start' });
 }
 function syncSelectedPixels(): void {
+  invalidateAlphabet(el('#alphabet'));
   app.querySelectorAll<SVGGElement>('[data-pixel]').forEach(pixel => {
     const isSelected = selection().has(pixel.dataset.pixel!);
     pixel.classList.toggle('is-selected', isSelected);
@@ -212,67 +246,32 @@ function selectPixel(id: string, additive: boolean): void {
   scope = 'selection'; syncSelectedPixels();
 }
 function clearSelection(): void { selection().clear(); syncSelectedPixels(); }
-function openDialog(content: string): void { el('.dialog-content').innerHTML = content; el<HTMLDialogElement>('dialog').showModal(); }
-function openExport(): void {
-  openDialog(`<p class="eyebrow">TAKE THE LETTERS WITH YOU</p><h2>Export a specimen.</h2>
-    <p>Editable SVG, ready for your vector editor. Wind exports as a still letterform.</p>
-    <label class="scope-label">Letters to export<select id="export-scope">
-      ${saved.wordMode ? '<option value="word">Current word canvas</option>' : ''}
-      ${focused ? `<option value="focused">Focused letter: ${focused}</option>` : ''}
-      <option value="alphabet">Entire alphabet A–Z</option><option value="custom">Choose letters</option>
-    </select></label>
-    <label class="scope-label export-custom" hidden>Choose letters<input id="export-letters" type="text" placeholder="e.g. ABCXYZ" maxlength="100" autocomplete="off" spellcheck="false" aria-describedby="export-letters-help"><span id="export-letters-help">A–Z only. Each letter is exported once.</span></label>
-    <label class="scope-label">Ink<select id="export-ink" aria-label="Ink"><option value="#292b26">Dark ink</option><option value="#f3f3f0">Light ink</option></select></label>
-    <label class="control control-toggle"><span>Transparent background</span><input id="export-transparent" type="checkbox" checked></label>
-    <p id="export-error" role="alert" hidden></p>
-    <button class="regenerate-button" data-action="download-svg">Download SVG ↓</button>
-    <p class="panel-footnote">One group per letter. Pixel modules stay editable shapes; Botanical ASCII stays editable text.</p>`);
-  el<HTMLSelectElement>('#export-ink').value = theme === 'dark' ? '#f3f3f0' : '#292b26';
-  el('#export-scope').addEventListener('change', () => {
-    const custom = el<HTMLSelectElement>('#export-scope').value === 'custom';
-    el('.export-custom').hidden = !custom;
-    el('#export-error').hidden = true;
-    if (custom) el<HTMLInputElement>('#export-letters').focus();
-  });
-}
-function saveSvg(): void {
-  const exportScope = el<HTMLSelectElement>('#export-scope').value;
-  const letters = exportScope === 'word' ? [...saved.word] : exportScope === 'focused' && focused ? [focused]
-    : exportScope === 'custom' ? [...new Set(el<HTMLInputElement>('#export-letters').value.toUpperCase().match(/[A-Z]/g) ?? [])] : LETTERS;
-  if (!letters.length) {
-    el('#export-error').textContent = 'Enter at least one letter from A to Z.';
-    el('#export-error').hidden = false;
-    el<HTMLInputElement>('#export-letters').focus();
-    return;
-  }
-  const ink = el<HTMLSelectElement>('#export-ink').value;
-  const background = el<HTMLInputElement>('#export-transparent').checked ? undefined : ink === '#292b26' ? '#f3f3f0' : '#171814';
-  const source = exportSvg(style(), state(), { letters, ink, background, word: exportScope === 'word' ? saved.word : undefined });
-  downloadSvg(source, `alphabet-lab-${style().id}-${letters.length === 26 ? 'A-Z' : letters.join('')}-seed-${state().params.seed}.svg`);
-  el<HTMLDialogElement>('dialog').close();
-  notify(`SVG exported: ${letters.length === 1 ? letters[0] : `${letters.length} letters`}`);
-}
-async function copyConfig(): Promise<void> {
-  const json = JSON.stringify({ version: 1, style: style().id, parameters: state().params, pixelEdits: state().edits, pixelPositions: state().positions, word: saved.wordMode ? saved.word : undefined }, null, 2);
-  try { await navigator.clipboard.writeText(json); notify('Configuration copied'); }
-  catch {
-    openDialog('<p class="eyebrow">YOUR SPECIMEN</p><h2>Take the rules with you.</h2><p>Clipboard access is unavailable. Select and copy this configuration.</p><textarea class="config-fallback" aria-label="Configuration JSON" readonly></textarea>');
-    el<HTMLTextAreaElement>('.config-fallback').value = json; el<HTMLTextAreaElement>('.config-fallback').select();
-  }
-}
+const { openDialog, openConfiguration, openExport, saveSvg, copyConfig } = createDialogs({
+  app, saved: () => saved, style, state, focused: () => focused, theme: () => theme, notify,
+  importState(next) {
+    saved = next; active = styles.findIndex(item => item.id === saved.activeStyle); focused = null;
+    for (const selected of selections.values()) selected.clear();
+    currentLetter = saved.wordMode ? wordInstances(saved.word)[0] : 'A';
+    history.end(); historyGroup = ''; updateView();
+  },
+});
 function action(name: string): void {
+  history.end(); historyGroup = '';
   switch (name) {
+    case 'undo': restoreHistory(false); break;
+    case 'redo': restoreHistory(true); break;
+    case 'configuration': openConfiguration(); break;
     case 'previous': switchStyle(active - 1); break;
     case 'next': switchStyle(active + 1); break;
     case 'regenerate': state().params.seed = newSeed(); updateView(); notify('A new variation, from the same rules'); break;
     case 'randomize': { const seed = newSeed(); state().params = sanitizeParams(style(), { ...state().params, ...style().randomize?.(seededRandom(seed)), seed }); updateView(); notify('A fresh set of possibilities'); break; }
-    case 'reset': saved.styles[style().id] = { params: { ...style().defaults }, edits: {} }; selection().clear(); updateView(); notify('This alphabet has been reset'); break;
+    case 'reset': saved.styles[style().id] = { params: { ...style().defaults }, edits: {}, positions: {} }; selection().clear(); updateView(); notify('This alphabet has been reset'); break;
     case 'copy': void copyConfig(); break;
     case 'export': openExport(); break;
     case 'download-svg': saveSvg(); break;
     case 'word': saved.wordMode = true; focused = null; currentLetter = wordInstances(saved.word)[0]; selection().clear(); updateView(); el<HTMLInputElement>('#word-input').focus(); break;
     case 'reset-positions': state().positions ??= {}; for (const id of targets()) state().positions![id] = { x: 0, y: 0 }; requestDraw(); notify('Pixel positions restored for the active scope'); break;
-    case 'back': { const letter = focused; focused = null; saved.wordMode = false; currentLetter = 'A'; selection().clear(); updateView(); if (letter) el<HTMLButtonElement>(`.glyph-open[data-focus="${letter}"]`).focus({ preventScroll: true }); break; }
+    case 'back': { const letter = focused; focused = null; saved.wordMode = false; currentLetter = 'A'; selection().clear(); updateView(); if (letter) el<HTMLButtonElement>(`.glyph-open[data-focus="${letter}"]`).focus({ preventScroll: true }); else el<HTMLButtonElement>('[data-action="word"]').focus({ preventScroll: true }); break; }
     case 'deselect': clearSelection(); break;
     case 'panel': panelHidden = !panelHidden; el('.workspace').classList.toggle('panel-hidden', panelHidden); el('#control-panel').hidden = panelHidden; el('.controls-toggle').setAttribute('aria-expanded', String(!panelHidden)); el('.toggle-label').textContent = panelHidden ? 'Show controls' : 'Hide controls'; break;
     case 'theme': theme = theme === 'light' ? 'dark' : 'light'; applyTheme(); try { localStorage.setItem(THEME_KEY, theme); } catch { /* Theme persistence is optional. */ } break;
@@ -299,7 +298,7 @@ el('#word-input').addEventListener('input', event => {
   const word = cleanWord(input.value);
   input.value = word;
   if (!word) { input.setCustomValidity('Enter at least one letter.'); return; }
-  input.setCustomValidity(''); saved.word = word; currentLetter = wordInstances(word)[0]; selection().clear();
+  input.setCustomValidity(''); saved.word = word; for (const state of Object.values(saved.styles)) pruneWordEdits(state, word); currentLetter = wordInstances(word)[0]; selection().clear();
   el('.specimen-subtitle').textContent = `Word / ${word}`;
   updateSelectionUI(); requestDraw();
 });
@@ -308,40 +307,25 @@ el('#word-input').addEventListener('blur', event => {
   if (!input.value) input.value = saved.word;
   input.setCustomValidity('');
 });
-enablePixelDragging(el('#alphabet'), { state, selected: selection, select: selectPixel, changed: persist });
-document.addEventListener('keydown', event => {
-  const target = event.target as HTMLElement;
-  if (target.closest('input, textarea, select, [contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey || el<HTMLDialogElement>('dialog').open) return;
-  const pixel = target.closest<SVGElement>('[data-pixel]');
-  if (pixel && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
-    event.preventDefault();
-    const id = pixel.dataset.pixel!;
+enablePixelDragging(el('#alphabet'), { state, selected: selection, select: selectPixel, changed: () => { invalidateAlphabet(el('#alphabet')); persist(); } });
+app.addEventListener('input', event => {
+  const input = event.target as HTMLInputElement;
+  historyGroup = input.id || input.name || input.closest('label')?.textContent || 'input';
+}, true);
+app.addEventListener('change', () => { history.end(); historyGroup = ''; });
+app.addEventListener('focusout', () => { history.end(); historyGroup = ''; });
+enableKeyboard({
+  dialog: el<HTMLDialogElement>('dialog'), action, undo: restoreHistory, select: selectPixel,
+  nudge(id, key, step) {
     if (!selection().has(id)) selectPixel(id, false);
-    state().positions ??= {};
-    const step = event.shiftKey ? 5 : 1;
-    for (const selected of selection()) {
-      const position = pixelPosition(state(), selected);
-      state().positions![selected] = {
-        x: Math.max(-40, Math.min(40, position.x + (event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0))),
-        y: Math.max(-40, Math.min(40, position.y + (event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0))),
-      };
-    }
-    draw(); persist();
-    [...app.querySelectorAll<SVGElement>('[data-pixel]')].find(element => element.dataset.pixel === id)?.focus();
-    return;
-  }
-  if (pixel && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); selectPixel(pixel.dataset.pixel!, event.shiftKey); return; }
-  if (event.key === ' ' && target.closest('button, a, summary')) return;
-  if (event.repeat) return;
-  if (event.key === 'ArrowLeft') { event.preventDefault(); action('previous'); }
-  else if (event.key === 'ArrowRight') { event.preventDefault(); action('next'); }
-  else if (event.key.toLowerCase() === 'r') action('randomize');
-  else if (event.key.toLowerCase() === 'h') action('panel');
-  else if (event.key === ' ') { event.preventDefault(); action('regenerate'); }
-  else if (event.key === 'Escape') { if (focused || saved.wordMode) action('back'); else clearSelection(); }
+    nudgePixels(state(), selection(), key, step); draw(); persist();
+    const position = state().positions![id];
+    notify(`${selection().size} selected; pixel offset ${position.x}, ${position.y}`);
+  },
+  escape() { if (focused || saved.wordMode) action('back'); else clearSelection(); },
 });
 el<HTMLDialogElement>('dialog').addEventListener('click', event => { if (event.target === event.currentTarget) el<HTMLDialogElement>('dialog').close(); });
-window.addEventListener('pagehide', () => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); } catch { /* Optional storage. */ } });
 applyTheme();
+if (startupError) notify(startupError);
 if (saved.wordMode) currentLetter = wordInstances(saved.word)[0];
 updateView();

@@ -1,12 +1,26 @@
 import type { AlphabetStyle, StyleState } from '../types';
 import { LETTERS } from '../styles/glyphs';
 
+const cache = new WeakMap<HTMLElement, Map<string, { key: string; cell: HTMLElement }>>();
+
+/** Direct SVG selection/drag updates bypass rendering and must invalidate its snapshots. */
+export function invalidateAlphabet(container: HTMLElement): void { cache.delete(container); }
+
 export function renderAlphabet(container: HTMLElement, style: AlphabetStyle, state: StyleState, selected: Set<string>, focused: string | null): void {
   container.className = `alphabet ${focused ? 'is-focused' : ''} ${state.params.labels ? '' : 'hide-labels'}`;
   container.style.setProperty('--letter-gap', `${state.params.spacing}px`);
   container.style.setProperty('--row-gap', `${state.params.rowSpacing}px`);
+  const previous = cache.get(container) ?? new Map();
+  const next = new Map<string, { key: string; cell: HTMLElement }>();
+  const { spacing: _spacing, rowSpacing: _rowSpacing, labels: _labels, ...geometry } = state.params;
   const fragment = document.createDocumentFragment();
   for (const letter of focused ? [focused] : LETTERS) {
+    const key = JSON.stringify([style.id, Boolean(focused), geometry,
+      Object.entries(state.edits).filter(([id]) => id.startsWith(`${letter}:`)),
+      Object.entries(state.positions ?? {}).filter(([id]) => id.startsWith(`${letter}:`)),
+      [...selected].filter(id => id.startsWith(`${letter}:`))]);
+    const cached = previous.get(letter);
+    if (cached?.key === key) { fragment.append(cached.cell); next.set(letter, cached); continue; }
     const cell = document.createElement('article');
     cell.className = 'glyph-cell';
     cell.dataset.letter = letter;
@@ -23,6 +37,7 @@ export function renderAlphabet(container: HTMLElement, style: AlphabetStyle, sta
       artButton.append(svg); cell.append(artButton);
     } else cell.append(svg);
     cell.append(open);
+    next.set(letter, { key, cell });
     fragment.append(cell);
   }
   if (!focused) {
@@ -32,4 +47,5 @@ export function renderAlphabet(container: HTMLElement, style: AlphabetStyle, sta
     fragment.append(colophon);
   }
   container.replaceChildren(fragment);
+  cache.set(container, next);
 }

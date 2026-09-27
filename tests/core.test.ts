@@ -48,12 +48,12 @@ test('character and word input only retain supported visible characters', () => 
 });
 test('repeated word letters have independent overrides and inherit base glyph edits', () => {
   const instances = wordInstances('LL');
-  assert.deepEqual(instances, ['LL@0:L', 'LL@1:L']);
-  const state = { params: {}, edits: { 'L:0:0': 1.2, 'LL@0:L:0:0': 1.6 }, positions: { 'L:0:0': { x: 3, y: 4 }, 'LL@0:L:0:0': { x: 15, y: 8 } } };
-  assert.equal(pixelScale(state, 'LL@0:L:0:0'), 1.6);
-  assert.equal(pixelScale(state, 'LL@1:L:0:0'), 1.2);
-  assert.deepEqual(pixelPosition(state, 'LL@0:L:0:0'), { x: 15, y: 8 });
-  assert.deepEqual(pixelPosition(state, 'LL@1:L:0:0'), { x: 3, y: 4 });
+  assert.deepEqual(instances, ['w@0:L', 'w@1:L']);
+  const state = { params: {}, edits: { 'L:0:0': 1.2, 'w@0:L:0:0': 1.6 }, positions: { 'L:0:0': { x: 3, y: 4 }, 'w@0:L:0:0': { x: 15, y: 8 } } };
+  assert.equal(pixelScale(state, 'w@0:L:0:0'), 1.6);
+  assert.equal(pixelScale(state, 'w@1:L:0:0'), 1.2);
+  assert.deepEqual(pixelPosition(state, 'w@0:L:0:0'), { x: 15, y: 8 });
+  assert.deepEqual(pixelPosition(state, 'w@1:L:0:0'), { x: 3, y: 4 });
   const restored = initialState([fixture], JSON.stringify({ version: 1, word: 'LL', wordMode: true, styles: { fixture: state } }));
   assert.deepEqual(restored.styles.fixture.positions, state.positions);
   assert.deepEqual(restored.styles.fixture.edits, state.edits);
@@ -71,4 +71,59 @@ test('persistence recovers invalid JSON, ignores incompatible versions and prese
   assert.equal(restored.activeStyle, 'fixture');
   assert.equal(restored.styles.fixture.params.size, 1.3);
   assert.deepEqual(restored.styles.fixture.edits, { 'A:0:1': 1.5 });
+});
+
+
+test('legacy word IDs migrate only for the active word, and stale words are removed', () => {
+  const saved = initialState([fixture], JSON.stringify({ version: 1, word: 'LL', styles: { fixture: { edits: { 'LL@0:L:0:0': 1.6, 'OLD@0:O:0:0': 1.4, 'L:0:0': 1.1 }, positions: { 'LL@1:L:1:0': { x: 3, y: 4 } } } } }));
+  assert.equal(saved.version, 2);
+  assert.deepEqual(saved.styles.fixture.edits, { 'w@0:L:0:0': 1.6, 'L:0:0': 1.1 });
+  assert.deepEqual(saved.styles.fixture.positions, { 'w@1:L:1:0': { x: 3, y: 4 } });
+});
+
+import { History } from '../src/history.ts';
+import { parseConfiguration, configurationJSON, shareURL } from '../src/configuration.ts';
+import { pruneWordEdits } from '../src/utils/composition.ts';
+
+test('bounded history coalesces gestures, detaches snapshots and invalidates redo branches', () => {
+  const history = new History({ value: 0 }, 2);
+  history.record({ value: 1 }, 'slider'); history.record({ value: 2 }, 'slider'); history.end();
+  const previous = history.undo()!; assert.equal(previous.value, 0); previous.value = 99;
+  assert.equal(history.redo()!.value, 2);
+  history.record({ value: 3 }); history.record({ value: 4 }); history.record({ value: 5 });
+  assert.equal(history.undo()!.value, 4); assert.equal(history.undo()!.value, 3); assert.equal(history.undo(), undefined);
+  history.record({ value: 6 }); assert.equal(history.redo(), undefined);
+});
+
+test('word edits survive changes elsewhere; replaced and removed occurrences are pruned', () => {
+  const state = { params: {}, edits: { 'w@0:L:0:0': 1.4, 'w@1:L:0:0': 1.6 }, positions: { 'w@1:L:0:0': { x: 2, y: 3 } } };
+  pruneWordEdits(state, 'LLA'); assert.equal(Object.keys(state.edits).length, 2);
+  pruneWordEdits(state, 'LA'); assert.deepEqual(state.edits, { 'w@0:L:0:0': 1.4 }); assert.deepEqual(state.positions, {});
+});
+
+test('configuration roundtrip, version 1 import and helpful validation errors', () => {
+  const state = initialState([fixture], null);
+  assert.deepEqual(parseConfiguration(configurationJSON(state), [fixture]), state);
+  const legacy = { version: 1, style: 'fixture', parameters: { size: 1.4 }, word: 'LL', pixelEdits: { 'LL@0:L:0:0': 1.6 } };
+  assert.equal(parseConfiguration(JSON.stringify(legacy), [fixture]).styles.fixture.edits['w@0:L:0:0'], 1.6);
+  for (const input of ['null', '{', JSON.stringify({ version: 99 }), JSON.stringify({ ...legacy, parameters: { size: 8 } }), JSON.stringify({ ...legacy, pixelPositions: { 'L:0:0': { x: '1', y: 0 } } })]) assert.throws(() => parseConfiguration(input, [fixture]));
+  const url = new URL(shareURL(state, 'https://example.test/'));
+  assert.deepEqual(parseConfiguration(decodeURIComponent(url.hash.slice(8)), [fixture]), state);
+});
+
+
+import { constrainPixelOffset, nudgePixelOffset } from '../src/utils/pixel-grid.ts';
+test('optional grid snaps glyph offsets and nudges directionally within bounds', () => {
+  const grid = { params: { snapToGrid: true }, edits: {} };
+  const free = { params: { snapToGrid: false }, edits: {} };
+  assert.equal(constrainPixelOffset(grid, 8.1), 10);
+  assert.equal(constrainPixelOffset(grid, -8.1), -10);
+  assert.equal(constrainPixelOffset(grid, 43), 40);
+  assert.equal(constrainPixelOffset(free, 8.1), 8.1);
+  assert.equal(nudgePixelOffset(grid, 7, 1, 1), 10);
+  assert.equal(nudgePixelOffset(grid, 7, -1, 1), 5);
+  assert.equal(nudgePixelOffset(grid, -7, -1, 1), -10);
+  assert.equal(nudgePixelOffset(grid, 0, 1, 5), 25);
+  assert.equal(nudgePixelOffset(grid, 38, 1, 5), 40);
+  assert.equal(nudgePixelOffset(free, 7, 1, 1), 8);
 });

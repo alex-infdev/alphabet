@@ -42,7 +42,16 @@ Runs the production build locally.
 npm test
 ```
 
-Runs the geometry, reproducibility, and persistence tests.
+Runs the unit tests (geometry, reproducibility, migrations, configuration validation, and bounded history).
+
+```sh
+npx playwright install chromium
+npm run test:browser
+npm run test:all
+npm run typecheck
+```
+
+Browser tests run in desktop Chromium and a mobile Chromium/touch viewport. They cover persistence/migration, repeated letters, selection, drag/cancel, scale/nudge, history, JSON/file/URL portability, SVG downloads, dialogs, focus, rendering reuse, and responsive layout. `test:all` runs unit and browser suites. Screenshots are written to `.qa/`; failure traces go to `test-results/`. Browser binaries are only needed for testing.
 
 ---
 
@@ -171,6 +180,8 @@ When you’re editing a single letter or a word, you can also nudge focused pixe
 - **Arrow keys** move by 1 unit
 - **Shift + Arrow key** moves by 5 units
 
+**Snap to grid (5 units)** in Soft Pixel makes mouse, pen, and touch dragging snap to a 5-unit grid in glyph coordinates. Arrow keys move to the next grid line; Shift moves five grid steps. It starts off for free movement. Enabling it leaves existing artwork in place until you move pixels. The toggle is saved, exported with configurations, and undoable.
+
 Offsets are limited to ±40 glyph units so pixels can’t disappear endlessly into space.
 
 If things get out of hand, **Restore pixel positions** puts the active scope back onto the original grid.
@@ -187,7 +198,9 @@ MOON
 
 editing the first O does not automatically edit the second O.
 
-Those occurrence-specific edits are remembered even if you change the word and later come back to it.
+Occurrence IDs use `w@POSITION:LETTER:ROW:COLUMN`, independent of the complete word. Changing or appending other letters preserves edits at unchanged positions. Replacing/removing an occurrence prunes its overrides; inserting letters does not move existing edits to new positions. Undo restores removed edits. This bounds saved edits to the current word rather than accumulating every word ever typed.
+
+Version 1 saves migrate overrides for their saved word; obsolete word variants are discarded. Alphabet overrides and valid parameters are preserved. The storage key remains `alphabet-lab:v1` so existing users are upgraded automatically; the payload is version 2.
 
 ---
 
@@ -197,7 +210,7 @@ Click a Botanical letter to open it on its own.
 
 For Soft Pixel, click the letter label underneath the glyph.
 
-In Soft Pixel focus mode, individual modules can also be reached with **Tab** and selected using **Enter** or **Space**.
+In Soft Pixel focus mode and word mode, **Tab** enters the pixel canvas at a single module. **Alt + Arrow keys** moves focus spatially between modules. **Enter** or **Space** selects. Plain arrows continue to nudge; Shift increases the nudge to 5. Only one module is in the tab order, and focus survives redraws. Instructions and selection status are available to assistive technology.
 
 Hold **Shift** while selecting to add or remove modules from the current selection.
 
@@ -212,8 +225,11 @@ A few shortcuts make experimenting faster:
 - **Space** generates a new seed
 - **H** hides or shows the controls
 - **Escape** leaves focus mode or clears the current selection
+- **Ctrl/Cmd + Z** undoes; **Ctrl/Cmd + Shift + Z** redoes
 
-Shortcuts are disabled while you are typing inside inputs or dialogs.
+App shortcuts are disabled while typing inside inputs or dialogs, preserving native text editing. Undo/Redo buttons remain available for applying history after word/parameter entry.
+
+History holds up to 100 changes in memory, including parameters, randomization, regeneration, movement/scaling, position resets, style reset, word changes, and configuration import. A slider gesture or word typing session is one change; each completed drag is one change. New edits discard redo history. Undo/redo persists the restored state and clears transient selection to avoid dangling IDs. History itself is not stored across reloads.
 
 Buttons also keep their normal keyboard behaviour, so Space still activates a focused button.
 
@@ -239,28 +255,15 @@ Focus state and selections are intentionally temporary and do not affect the gen
 
 ---
 
-## Copy configuration
+## Configuration portability
 
-**Copy configuration** gives you the current setup as JSON.
+**Copy configuration** copies version 2 JSON containing both styles, the active style, word, composition mode, parameters, and pixel overrides. Clipboard failure opens selectable text.
 
-For example, the configuration contains:
+**Import / save configuration** supports paste, JSON upload/download, and share links. Upload loads text for review; **Import JSON** validates and applies it atomically. Errors explain malformed JSON, unsupported versions/styles, invalid parameter types/ranges, and invalid pixel IDs/offsets. Omitted parameters use style defaults; numeric steps and character palettes are normalized. Invalid imports leave your work unchanged. Files are limited to 2 MB.
 
-```text
-version
-style
-parameters
-pixelEdits
-pixelPositions
-word
-```
+Version 1 copied configurations and saved-state objects are accepted and migrated. Version 2 contains the complete setup; importing a legacy single-style configuration restores other styles to defaults. Import is undoable.
 
-The exact format is currently version 1.
-
-If normal clipboard access isn’t available, the app shows the JSON as selectable text instead.
-
-This is mainly useful for preserving a particular setup or eventually sharing/importing presets.
-
-Importing presets through the UI is not implemented yet.
+**Create share link** places a URL in the selectable text field. The configuration lives in the URL fragment, with no server required. Links over 8,000 characters are rejected with guidance to use a JSON file. A supplied link takes precedence over local state on page load; malformed links report an error and retain local state. Reloading a share URL reapplies that shared setup.
 
 ---
 
@@ -305,6 +308,10 @@ src/
   main.ts
   types.ts
   state.ts
+  history.ts
+  persistence.ts
+  configuration.ts
+  css/
   style.css
   layout.css
 
@@ -319,6 +326,10 @@ src/
     renderer.ts
     word-renderer.ts
     pixel-drag.ts
+    pixel-editing.ts
+    pixel-navigation.ts
+    keyboard.ts
+    dialogs.ts
 
   utils/
     random.ts
@@ -328,6 +339,7 @@ src/
 
 tests/
   core.test.ts
+  browser/editor.spec.ts
 ```
 
 A rough guide to what lives where:
@@ -344,7 +356,9 @@ Shared TypeScript definitions for styles, controls, rendering, and application s
 
 ### `state.ts`
 
-Persistence, state validation, and compatibility with saved configurations.
+State validation and storage migrations. `persistence.ts` handles debounced writes and page-exit flushing. `history.ts` owns bounded detached snapshots; `configuration.ts` validates portable JSON and creates share links. UI controllers handle dialogs/exports, keyboard commands, pixel movement, and spatial navigation.
+
+`style.css` and `layout.css` import feature modules under `css/` in the original cascade order. There are no runtime framework dependencies; Playwright is a development-only test dependency.
 
 ### `styles/`
 
@@ -482,14 +496,14 @@ Word rendering can also provide an instance ID.
 A repeated letter might look like:
 
 ```text
-WORD@3:L
+w@3:L
 ```
 
 and individual modules extend that ID with their row and column.
 
 This is how the app can tell two copies of the same letter apart.
 
-Control changes are rendered on the next animation frame rather than immediately hammering the DOM.
+Control changes render on the next animation frame. Alphabet glyph cells are cached by geometry, relevant overrides, selection, and focus mode. Spacing/row spacing/labels reuse geometry; individual edits rebuild only affected letters. Global form/seed changes still regenerate every glyph because they affect all letters. Word canvases rebuild at most 16 glyphs. Dragging updates transforms directly, without rebuilding artwork. Deterministic random streams are unchanged.
 
 Writes to local storage are debounced as well.
 
@@ -497,30 +511,20 @@ Writes to local storage are debounced as well.
 
 ## Saved configuration format
 
-Copied configurations currently look roughly like this:
-
 ```ts
 {
-  version: 1,
-  style,
-  parameters,
-  pixelEdits,
-  pixelPositions,
-  word?
+  version: 2,
+  activeStyle: 'soft-pixel',
+  styles: {
+    'soft-pixel': { params: { /* typed controls */ }, edits: {}, positions: {} },
+    'botanical': { params: { /* typed controls */ }, edits: {}, positions: {} }
+  },
+  word: 'GROW',
+  wordMode: false
 }
 ```
 
-Browser storage keeps the state for all styles together, along with the active word and composition mode.
-
-Older saved states that do not contain words or pixel positions are still supported.
-
-`sanitizeParams` is the main validation boundary for loaded parameters.
-
-Unknown parameters and incompatible storage versions are ignored rather than trusted.
-
-This also gives the project a reasonable foundation for something like URL presets or configuration importing later.
-
-Neither of those is currently exposed in the UI.
+Unknown/incompatible browser storage recovers to defaults. Configuration imports instead report errors. `SoftPixelParameters`, `BotanicalParameters`, and `TypedControl` check defaults and control keys/types at compile time; the shared registry retains a generic boundary for extensible styles.
 
 ---
 

@@ -7,7 +7,7 @@ The idea is simple: take the alphabet, give it a visual system, and let people m
 Right now there are two styles:
 
 - **Botanical ASCII**, where letters grow out of ASCII characters like stems, leaves, and flowers.
-- **Soft Pixel**, where letters are built from rounded pixel-like modules that can be resized and moved around individually.
+- **Soft Pixel**, an Ambicase Modern interpretation built from hand-charted square tiles that can be resized and moved individually.
 
 Everything is made with **Vite, TypeScript, CSS, and native SVG**. There is no framework and no graphics library.
 
@@ -99,7 +99,7 @@ Changing the palette only changes what the artwork is drawn with. It does not ch
 
 You don’t have to work with the whole alphabet.
 
-Open **Make a word** and type up to 16 letters. The app creates one long SVG canvas for the word and updates it as you type.
+Open **Make a word** and type up to 64 characters: letters, numbers, punctuation, currencies, and ordinary spaces. The app creates one long SVG canvas and updates it as you type. Both styles support the same complete set.
 
 Input is automatically converted to uppercase.
 
@@ -115,7 +115,7 @@ Both visual styles work here, including the shared controls, wind animation, pix
 
 Your word and any edits you make to it are saved locally, so they survive refreshes and style changes.
 
-Use **All letters** or press **Escape** to go back to the full alphabet.
+Use **All glyphs** or press **Escape** to return to the gallery, arranged as A–Z, Symbols, and Numbers. Spaces have an intentional advance but no visible artwork.
 
 ---
 
@@ -147,7 +147,7 @@ SVG exports always use the still version.
 
 Soft Pixel takes a very different approach.
 
-Each letter is built from individual rounded modules. Those modules are actual editable pieces rather than one finished shape.
+Each letter is built from individual square tiles with lightly softened corners. Stepped curves, block terminals, and angular counters give the Ambicase-derived forms a stitched-chart character. Those modules are actual editable pieces rather than one finished shape. Corner radius remains adjustable.
 
 Click a module to select it.
 
@@ -287,7 +287,7 @@ The exported file keeps the structure editable.
 
 Each letter gets its own SVG group.
 
-Botanical characters stay as actual text using **Courier New** with a monospace fallback instead of being converted into paths.
+Botanical ASCII marks export as vector outlines. Symbols and numbers have their own plant skeletons and drawn marks. No glyph uses SVG text or requires an installed font.
 
 Soft Pixel modules remain separate vector shapes.
 
@@ -503,7 +503,7 @@ and individual modules extend that ID with their row and column.
 
 This is how the app can tell two copies of the same letter apart.
 
-Control changes render on the next animation frame. Alphabet glyph cells are cached by geometry, relevant overrides, selection, and focus mode. Spacing/row spacing/labels reuse geometry; individual edits rebuild only affected letters. Global form/seed changes still regenerate every glyph because they affect all letters. Word canvases rebuild at most 16 glyphs. Dragging updates transforms directly, without rebuilding artwork. Deterministic random streams are unchanged.
+Control changes render on the next animation frame. Alphabet glyph cells are cached by geometry, relevant overrides, selection, and focus mode. Spacing/row spacing/labels reuse geometry; individual edits rebuild only affected letters. Global form/seed changes still regenerate every glyph because they affect all letters. Text canvases rebuild at most 64 glyphs. Dragging updates transforms directly, without rebuilding artwork. Deterministic random streams are unchanged.
 
 Writes to local storage are debounced as well.
 
@@ -532,12 +532,12 @@ Unknown/incompatible browser storage recovers to defaults. Configuration imports
 
 The UI uses local sans-serif fonts.
 
-Botanical ASCII uses **Courier New**, falling back to the browser’s monospace font if necessary.
+Botanical A–Z preserves its original Courier-shaped ASCII material as stored outlines. Its skeletons, seeded placement, and controls remain unchanged. The new symbols and numbers use separate plant structures. See [symbol design and architecture notes](dev/symbols.md) and the development sheet at `/dev/symbols.html`.
 
 There are no remote fonts or other asset requests.
 
 Animation respects `prefers-reduced-motion`, except when the user explicitly turns wind animation on.
 
-On desktop, the layout tries to keep the complete alphabet visible while giving the controls their own scrolling area.
+On desktop, the gallery scrolls through A–Z, Symbols, and Numbers while the controls retain their own scrolling area.
 
 On smaller screens, the alphabet flows naturally and the controls move underneath it.

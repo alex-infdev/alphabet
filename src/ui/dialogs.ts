@@ -1,6 +1,8 @@
 import { configurationJSON, parseConfiguration, shareURL } from '../configuration';
 import { styles } from '../styles';
 import { LETTERS } from '../styles/glyphs';
+import { SYMBOLS, DIGITS, glyphKey } from '../styles/characters';
+import { cleanWord } from '../utils/composition';
 import { exportSvg, downloadSvg } from '../utils/export-svg';
 import type { SavedState } from '../state';
 import type { AlphabetStyle, StyleState } from '../types';
@@ -61,15 +63,15 @@ export function createDialogs(options: {
       <p>Editable SVG. Wind animation exports as a still frame.</p>
       <label class="scope-label">Letters to export<select id="export-scope">
         ${options.saved().wordMode ? '<option value="word">Current word canvas</option>' : ''}
-        ${options.focused() ? `<option value="focused">Focused letter: ${options.focused()}</option>` : ''}
-        <option value="alphabet">Entire alphabet A–Z</option><option value="custom">Choose letters</option>
+        ${options.focused() ? '<option value="focused">Focused glyph</option>' : ''}
+        <option value="alphabet">Entire alphabet A–Z</option><option value="symbols">Symbols</option><option value="numbers">Numbers</option><option value="custom">Choose glyphs</option>
       </select></label>
-      <label class="scope-label export-custom" hidden>Choose letters<input id="export-letters" type="text" placeholder="e.g. ABCXYZ" maxlength="100" autocomplete="off" spellcheck="false" aria-describedby="export-letters-help"><span id="export-letters-help">A–Z only. Each letter is exported once.</span></label>
+      <label class="scope-label export-custom" hidden>Choose glyphs<input id="export-letters" type="text" placeholder="e.g. A+B = €5" maxlength="64" autocomplete="off" spellcheck="false" aria-describedby="export-letters-help"><span id="export-letters-help">Letters, numbers, symbols, and spaces. Each glyph is exported once.</span></label>
       <label class="scope-label">Ink<select id="export-ink" aria-label="Ink"><option value="#292b26">Dark ink</option><option value="#f3f3f0">Light ink</option></select></label>
       <label class="control control-toggle"><span>Transparent background</span><input id="export-transparent" type="checkbox" checked></label>
       <p id="export-error" role="alert" hidden></p>
       <button class="regenerate-button" data-action="download-svg">Download SVG ↓</button>
-      <p class="panel-footnote">One group per letter. Pixel modules stay editable shapes; Botanical ASCII stays editable text.</p>`);
+      <p class="panel-footnote">One group per glyph. Pixel tiles and Botanical marks remain editable vector shapes. No fonts required.</p>`);
     el<HTMLSelectElement>('#export-ink').value = options.theme() === 'dark' ? '#f3f3f0' : '#292b26';
     el('#export-scope').addEventListener('change', () => {
       const custom = el<HTMLSelectElement>('#export-scope').value === 'custom';
@@ -81,9 +83,9 @@ export function createDialogs(options: {
   function saveSvg(): void {
     const exportScope = el<HTMLSelectElement>('#export-scope').value;
     const letters = exportScope === 'word' ? [...options.saved().word] : exportScope === 'focused' && options.focused() ? [options.focused()!]
-      : exportScope === 'custom' ? [...new Set(el<HTMLInputElement>('#export-letters').value.toUpperCase().match(/[A-Z]/g) ?? [])] : LETTERS;
+      : exportScope === 'custom' ? [...new Set(cleanWord(el<HTMLInputElement>('#export-letters').value))] : exportScope === 'symbols' ? SYMBOLS : exportScope === 'numbers' ? DIGITS : LETTERS;
     if (!letters.length) {
-      el('#export-error').textContent = 'Enter at least one letter from A to Z.';
+      el('#export-error').textContent = 'Enter at least one supported glyph.';
       el('#export-error').hidden = false;
       el<HTMLInputElement>('#export-letters').focus();
       return;
@@ -91,7 +93,7 @@ export function createDialogs(options: {
     const ink = el<HTMLSelectElement>('#export-ink').value;
     const background = el<HTMLInputElement>('#export-transparent').checked ? undefined : ink === '#292b26' ? '#f3f3f0' : '#171814';
     const source = exportSvg(style(), state(), { letters, ink, background, word: exportScope === 'word' ? options.saved().word : undefined });
-    downloadSvg(source, `alphabet-lab-${style().id}-${letters.length === 26 ? 'A-Z' : letters.join('')}-seed-${state().params.seed}.svg`);
+    downloadSvg(source, `alphabet-lab-${style().id}-${exportScope === 'alphabet' ? 'A-Z' : letters.map(glyphKey).join('-')}-seed-${state().params.seed}.svg`);
     el<HTMLDialogElement>('dialog').close();
     notify(`SVG exported: ${letters.length === 1 ? letters[0] : `${letters.length} letters`}`);
   }

@@ -5,23 +5,27 @@ import { SKELETONS } from './glyphs';
 import { configureWind } from './botanical-wind';
 import './botanical-wind.css';
 import { cleanAscii } from '../utils/composition';
+import { BOTANICAL_SYMBOLS } from './botanical-symbols';
+import { renderBotanicalSymbol } from './botanical-symbol-renderer';
+import { asciiMark } from './botanical-marks';
 
-function renderGlyph({ letter, state }: RenderContext): SVGSVGElement {
+function renderGlyph(context: RenderContext): SVGSVGElement {
+  const { letter, state } = context;
+  if (Object.hasOwn(BOTANICAL_SYMBOLS, letter)) return renderBotanicalSymbol(context);
   const p = state.params;
   const palette = cleanAscii(String(p.characters ?? ''));
   const characterRandom = seededRandom(Number(p.seed) + letter.charCodeAt(0) * 1597);
   const random = seededRandom(Number(p.seed) + letter.charCodeAt(0) * 7919);
   const svg = glyphSvg(letter, 'Botanical ASCII');
   const scale = Number(p.scale);
-  const group = svgElement('g', { transform: `translate(60 75) scale(${scale} ${scale * Number(p.lineHeight)}) translate(-60 -75)`, fill: 'currentColor', 'font-family': '"Courier New", monospace', 'text-anchor': 'middle' });
+  const group = svgElement('g', { transform: `translate(60 75) scale(${scale} ${scale * Number(p.lineHeight)}) translate(-60 -75)`, fill: 'currentColor' });
   svg.append(group);
   const sway = svgElement('g');
   group.append(sway);
   let branch = sway;
   const draw = (char: string, x: number, y: number, size: number, angle = 0, opacity = 1) => {
-    const text = svgElement('text', { x: x.toFixed(2), y: y.toFixed(2), 'font-size': size, opacity, transform: `rotate(${angle.toFixed(1)} ${x.toFixed(2)} ${y.toFixed(2)})` });
-    text.textContent = palette ? palette[Math.floor(characterRandom() * palette.length)] : char;
-    branch.append(text);
+    const mark = palette ? palette[Math.floor(characterRandom() * palette.length)] : char;
+    branch.append(asciiMark(mark, x, y, size, angle, opacity));
   };
   for (const path of SKELETONS[letter]) {
     branch = svgElement('g');
@@ -94,5 +98,6 @@ export const botanical: AlphabetStyle = {
     { type: 'action', key: 'regenerate', label: 'Regenerate' },
   ] satisfies TypedStyle<BotanicalParameters>['controls'],
   renderGlyph,
+  glyphWidth: letter => BOTANICAL_SYMBOLS[letter]?.width ?? 120,
   randomize: random => ({ density: 0.45 + random() * 0.5, growth: 0.2 + random() * 0.8, branching: random(), flowers: 0.15 + random() * 0.8, distortion: random() * 0.85 }),
 };

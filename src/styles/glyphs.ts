@@ -1,5 +1,5 @@
 import { ambicasePixelIds } from './ambicase.ts';
-export const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+export { LETTERS } from './characters.ts';
 /** Monoline skeletons, normalized to a 4 x 6 em. Separate paths preserve counters. */
 export const SKELETONS: Record<string, number[][][]> = {
   A: [[[0,6],[2,0],[4,6]], [[0.75,3.8],[3.25,3.8]]],

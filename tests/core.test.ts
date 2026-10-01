@@ -7,6 +7,75 @@ import { wordLayout } from '../src/utils/word-layout.ts';
 import { initialState, sanitizeParams } from '../src/state.ts';
 import { cleanAscii, cleanWord, pixelPosition, pixelScale, wordInstances } from '../src/utils/composition.ts';
 import type { AlphabetStyle } from '../src/types.ts';
+import { createHash } from 'node:crypto';
+import { SYMBOLS, DIGITS, SUPPORTED_CHARACTERS, glyphKey } from '../src/styles/characters.ts';
+import { SOFT_SYMBOLS } from '../src/styles/soft-pixel-symbols.ts';
+import { BOTANICAL_SYMBOLS } from '../src/styles/botanical-symbols.ts';
+import { basePixelId, letterOf } from '../src/utils/composition.ts';
+import asciiOutlines from '../src/styles/botanical-marks.json' with { type: 'json' };
+
+test('both independent symbol systems cover the exact shared repertoire with drawable data', () => {
+  const expected = [...SYMBOLS, ...DIGITS, ' '].sort();
+  assert.deepEqual(Object.keys(SOFT_SYMBOLS).sort(), expected);
+  assert.deepEqual(Object.keys(BOTANICAL_SYMBOLS).sort(), expected);
+  assert.equal(new Set(SUPPORTED_CHARACTERS).size, SUPPORTED_CHARACTERS.length);
+  for (const char of [...SYMBOLS, ...DIGITS]) {
+    const soft = SOFT_SYMBOLS[char], botanical = BOTANICAL_SYMBOLS[char];
+    assert.ok(soft.width > 0 && botanical.width > 0);
+    assert.ok(Object.values(soft.rows).flat().length > 0, char);
+    assert.ok(botanical.paths.length + botanical.buds.length > 0, char);
+    for (const [row, cells] of Object.entries(soft.rows)) for (const [col,x,y,w,h] of cells) {
+      assert.ok(validPixelId(`${glyphKey(char)}:${row}:${col}`), char);
+      assert.deepEqual([x,y,w,h], [col*32-64,Number(row)*32-832,32,32]);
+    }
+    for (const path of botanical.paths) {
+      assert.ok(path.length >= 2);
+      for (let i=1;i<path.length;i++) assert.notDeepEqual(path[i],path[i-1]);
+    }
+  }
+  assert.deepEqual(SOFT_SYMBOLS[' '].rows, {});
+  assert.deepEqual(BOTANICAL_SYMBOLS[' '].paths, []);
+  assert.deepEqual(BOTANICAL_SYMBOLS[' '].buds, []);
+  for (const data of [SOFT_SYMBOLS, BOTANICAL_SYMBOLS]) {
+    assert.ok(data[' '].width > 0);
+    assert.ok(data['.'].width < data['?'].width);
+    assert.ok(data['-'].width < data['–'].width && data['–'].width < data['—'].width);
+    assert.ok(data['@'].width > data['!'].width);
+  }
+});
+
+test('mixed text, spaces and delimiter-sensitive symbol edits roundtrip without loss', () => {
+  const text = 'Hello, world! "A+B" = 50% & €5. \' \\ / (A) [B] {C} <D>';
+  assert.equal(cleanWord(text), text.toUpperCase());
+  assert.equal(cleanWord('  a  b  '), '  A  B  ');
+  assert.equal(cleanWord('a🌿b\nc'), 'ABC');
+  const state = initialState([fixture], null);
+  state.word = ':@"\'\\€ 50%'; state.wordMode = true;
+  for (const [index,char] of [...state.word].entries()) {
+    if (char === ' ') continue;
+    const base = pixelIds(char)[0], instance = `${wordInstances(state.word)[index]}:${base.split(':').slice(-2).join(':')}`;
+    assert.ok(validPixelId(base) && validPixelId(instance));
+    assert.equal(basePixelId(instance), base);
+    assert.equal(letterOf(wordInstances(state.word)[index]), char);
+    state.styles.fixture.edits[base] = 1.2;
+    state.styles.fixture.edits[instance] = 1.4;
+  }
+  assert.deepEqual(parseConfiguration(configurationJSON(state), [fixture]), state);
+  assert.deepEqual(initialState([fixture], JSON.stringify(state)), state);
+  assert.equal(validPixelId('u0041:1:1'), false, 'letter alias must not duplicate legacy IDs');
+  assert.equal(validPixelId('u0020:1:1'), false, 'space has no editable modules');
+  assert.equal(validPixelId('u2603:1:1'), false);
+  const layout = wordLayout({ glyphWidth: char => SOFT_SYMBOLS[char].width }, { params: { spacing: 0 }, edits: {} }, '. @');
+  assert.equal(layout.glyphs[2].x, 56 + SOFT_SYMBOLS['.'].width + SOFT_SYMBOLS[' '].width);
+});
+
+test('the previous handmade A-Z charts and Botanical A-Z skeletons remain intact', () => {
+  const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+  assert.equal(hash(AMBICASE), '6bd0d04939fa1e53e763f183795bd143c0859cc3488b4748db7dc040d31d8cd6');
+  assert.equal(hash(SKELETONS), '5900072aa83f9ae1d626233b5c8e3406767177b179903b45609cf6d1d0daa170');
+  assert.deepEqual(Object.keys(asciiOutlines).sort(), Array.from({ length: 94 }, (_, index) => String.fromCodePoint(index+33)).sort());
+  assert.ok(Object.values(asciiOutlines).every(path => path.startsWith('M') && /[LQC]/.test(path)));
+});
 
 test('a seed reproduces a sequence, while another seed produces a new variation', () => {
   const sequence = (seed: number) => { const random = seededRandom(seed); return Array.from({ length: 100 }, random); };
@@ -76,8 +145,8 @@ const fixture: AlphabetStyle = {
 
 test('character and word input only retain supported visible characters', () => {
   assert.equal(cleanAscii('**o<> &\n🌿é'), '*o<>&');
-  assert.equal(cleanWord('Hello, world! 123'), 'HELLOWORLD');
-  assert.equal(cleanWord('abcdefghijklmnopq').length, 16);
+  assert.equal(cleanWord('Hello, world! 123'), 'HELLO, WORLD! 123');
+  assert.equal(cleanWord('a'.repeat(70)).length, 64);
 });
 test('repeated word letters have independent overrides and inherit base glyph edits', () => {
   const instances = wordInstances('LL');
@@ -151,7 +220,7 @@ test('high-resolution module IDs survive JSON roundtrip and invalid grid address
   state.styles.fixture.positions = { 'M:16:25': { x: -3, y: 8 }, 'w@1:M:16:25': { x: 4, y: -9 } };
   assert.deepEqual(parseConfiguration(configurationJSON(state), [fixture]), state);
   for (const letter of LETTERS) assert.ok(pixelIds(letter).every(validPixelId));
-  for (const id of ['M:32:25', 'M:16:31', 'w@16:M:16:25', 'M:-1:0']) assert.equal(validPixelId(id), false);
+  for (const id of ['M:32:25', 'M:16:31', 'w@64:M:16:25', 'M:-1:0']) assert.equal(validPixelId(id), false);
 });
 
 

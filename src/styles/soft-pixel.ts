@@ -3,6 +3,7 @@ import { seededRandom } from '../utils/random';
 import { glyphSvg, svgElement } from '../utils/svg';
 import { ambicaseGlyph, ambicaseWidth, BASELINE, FONT_SCALE, GALLERY_WIDTH } from './ambicase';
 import { pixelPosition, pixelScale } from '../utils/composition';
+import { glyphKey } from './characters';
 
 function glyphWidth(letter: string, state: StyleState): number {
   return ambicaseWidth(letter, Number(state.params.scale));
@@ -21,9 +22,9 @@ function renderGlyph({ letter, instance, layout, state, selected, interactive }:
   svg.append(group);
   Object.entries(glyph.rows).forEach(([row, cells]) => cells.forEach(([x, left, top, cellWidth, cellHeight]) => {
     const y = Number(row);
-    const id = `${instance ?? letter}:${y}:${x}`;
+    const id = `${instance ?? glyphKey(letter)}:${y}:${x}`;
     const size = Number(p.pixelSize) / 13 * pixelScale(state, id);
-    // Small gutters keep modules discrete without erasing the font's hairlines.
+    // Fine seams separate the full chart tiles, including single-cell hairlines.
     const gutter = Number(p.gap) * 0.28;
     const w = Math.max(cellWidth * FONT_SCALE * 0.55, cellWidth * FONT_SCALE - gutter) * size;
     const h = Math.max(cellHeight * FONT_SCALE * 0.55, cellHeight * FONT_SCALE - gutter) * size;
@@ -52,9 +53,9 @@ function renderGlyph({ letter, instance, layout, state, selected, interactive }:
 
 export const softPixel: AlphabetStyle = {
   id: 'soft-pixel', name: 'Soft Pixel', subtitle: 'Editable modules',
-  description: 'Ambicase Modern in editable modules.',
-  material: 'MODULES / GEOMETRIC', editablePixels: true,
-  defaults: { snapToGrid: false, pixelSize: 13, gap: 1, radius: 0.5, scale: 0.95, spacing: 14, rowSpacing: 16, jitter: 0, rotation: 0, seed: 2048, labels: true } satisfies SoftPixelParameters,
+  description: 'Ambicase Modern, hand-charted in square tiles.',
+  material: 'MODULES / CHARTED', editablePixels: true,
+  defaults: { snapToGrid: false, pixelSize: 13, gap: 1, radius: 0.08, scale: 0.95, spacing: 14, rowSpacing: 16, jitter: 0, rotation: 0, seed: 2048, labels: true } satisfies SoftPixelParameters,
   controls: [
     { type: 'toggle', key: 'snapToGrid', label: 'Snap to grid (5 units)' },
     { type: 'range', key: 'pixelSize', label: 'Pixel size', min: 7, max: 16, step: 0.1, unit: 'px' },

@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Alphabet Lab / symbols and numbers</title>
+<style>
+body { margin: 28px; background:#faf9f4; color:#292b26; font:14px system-ui; }
+h1 { font-size:22px; } h2 { font-size:18px; margin-top:32px; }
+.sheet { display:grid; grid-template-columns:repeat(11,minmax(0,1fr)); gap:12px; }
+article { border:1px solid #d8d8cf; padding:8px; text-align:center; }
+article > svg { display:block; width:100%; height:145px; }
+.pixel-shape { fill:currentColor; } .pixel-outline { display:none; }
+.sample { margin-top:14px; border-bottom:1px solid #d8d8cf; }
+.sample > svg { width:100%; height:auto; max-height:175px; }
+</style>
+<h1>Symbols and numbers / native artwork</h1>
+<p>Soft Pixel charts and independent Botanical stem structures. Space is an invisible advance.</p>
+<main></main>
+<script type="module">
+import { softPixel } from '../src/styles/soft-pixel.ts';
+import { botanical } from '../src/styles/botanical.ts';
+import { SYMBOLS, DIGITS } from '../src/styles/characters.ts';
+import { exportSvg } from '../src/utils/export-svg.ts';
+for (const style of [softPixel, botanical]) {
+ const section=document.createElement('section'); section.dataset.style=style.id;
+ const title=document.createElement('h2'); title.textContent=style.name;
+ const sheet=document.createElement('div'); sheet.className='sheet';
+ const state={params:style.defaults,edits:{}};
+ for(const letter of [...SYMBOLS,...DIGITS]) {
+   const card=document.createElement('article'); card.dataset.glyph=letter;
+   card.textContent=letter;
+   card.append(style.renderGlyph({letter,state,selected:new Set(),interactive:false}));
+   sheet.append(card);
+ }
+ section.append(title,sheet);
+ for(const word of ['HELLO, WORLD! "A+B" = 50% & €5.', "' \" \\ / (A) [B] {C} <D>"]) {
+   const sample=document.createElement('div'); sample.className='sample';
+   const doc=new DOMParser().parseFromString(exportSvg(style,state,{letters:[],word,ink:'#292b26'}),'image/svg+xml');
+   sample.append(document.importNode(doc.documentElement,true)); section.append(sample);
+ }
+ document.querySelector('main').append(section);
+}
+</script>

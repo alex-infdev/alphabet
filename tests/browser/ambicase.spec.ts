@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import modules from '../../src/styles/ambicase-modules.json' with { type: 'json' };
 
 test('all source-derived glyphs render without errors, lowercase aliases and width-aware exports agree', async ({ page }) => {
   const errors: string[] = [];
@@ -6,10 +7,9 @@ test('all source-derived glyphs render without errors, lowercase aliases and wid
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   await page.goto('/');
   await page.locator('[data-style="1"]').click();
-  await expect(page.locator('.glyph-cell')).toHaveCount(26);
-  for (const letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
-    expect(await page.locator(`[data-letter="${letter}"] [data-pixel]`).count()).toBeGreaterThan(100);
-  }
+  await expect(page.locator('.glyph-cell[data-section="letters"]')).toHaveCount(26);
+  const counts = await page.locator('.glyph-cell[data-section="letters"]').evaluateAll(cells => cells.map(cell => cell.querySelectorAll('[data-pixel]').length));
+  expect(counts).toEqual(Object.values(modules).map(glyph => Object.values(glyph.rows).flat().length));
   // Exercise the actual renderer, not just the case-folding text input.
   const aliases = await page.evaluate(async () => {
     // @ts-expect-error Vite serves source modules for development verification.
@@ -51,8 +51,9 @@ test('all source-derived glyphs render without errors, lowercase aliases and wid
 test('Botanical keeps its ASCII geometry and fixed-width word layout', async ({ page }) => {
   await page.goto('/');
   await page.locator('[data-style="0"]').click();
-  await expect(page.locator('.glyph-cell')).toHaveCount(26);
-  expect(await page.locator('.glyph-cell svg text').count()).toBeGreaterThan(26);
+  await expect(page.locator('.glyph-cell[data-section="letters"]')).toHaveCount(26);
+  expect(await page.locator('.glyph-cell [data-ascii]').count()).toBeGreaterThan(26);
+  await expect(page.locator('.glyph-cell svg text')).toHaveCount(0);
   await expect(page.locator('[data-pixel]')).toHaveCount(0);
   await page.locator('[data-action="word"]').click();
   await page.locator('#word-input').fill('IM');

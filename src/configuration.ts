@@ -1,6 +1,7 @@
 import type { AlphabetStyle } from './types';
 import { initialState, type SavedState } from './state.ts';
-import { validPixelId } from './utils/composition.ts';
+import { cleanWord, validPixelId } from './utils/composition.ts';
+import { MAX_TEXT_LENGTH } from './styles/characters.ts';
 export function parseConfiguration(text: string, styles: AlphabetStyle[]): SavedState {
   if (text.length > 2_000_000) throw new Error('Configuration is too large (maximum 2 MB).');
   let value;
@@ -9,7 +10,7 @@ export function parseConfiguration(text: string, styles: AlphabetStyle[]): Saved
   if (value.style) value = { version: value.version, activeStyle: value.style, word: value.word ?? 'GROW', wordMode: Boolean(value.word), styles: { [value.style]: { params: value.parameters, edits: value.pixelEdits, positions: value.pixelPositions } } };
   if (!styles.some(style => style.id === value.activeStyle)) throw new Error('Unknown or missing active style.');
   if (!value.styles || typeof value.styles !== 'object' || Array.isArray(value.styles)) throw new Error('Expected a styles object.');
-  if (value.word !== undefined && (typeof value.word !== 'string' || !/^[A-Z]{1,16}$/.test(value.word))) throw new Error('Word must contain 1-16 uppercase letters A-Z.');
+  if (value.word !== undefined && (typeof value.word !== 'string' || !value.word.length || cleanWord(value.word) !== value.word)) throw new Error(`Text must contain 1-${MAX_TEXT_LENGTH} supported uppercase letters, symbols, or spaces.`);
   if (!Object.hasOwn(value.styles, value.activeStyle)) throw new Error('Missing state for the active style.');
   if (value.wordMode !== undefined && typeof value.wordMode !== 'boolean') throw new Error('wordMode must be true or false.');
   for (const [id, entry] of Object.entries(value.styles)) {

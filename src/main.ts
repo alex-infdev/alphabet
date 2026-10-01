@@ -5,6 +5,7 @@ import './style.css';
 import './layout.css';
 import { styles } from './styles';
 import { LETTERS, pixelIds } from './styles/glyphs';
+import { VISIBLE_CHARACTERS, glyphKey } from './styles/characters';
 import { initialState, sanitizeParams, STORAGE_KEY } from './state';
 import { newSeed, seededRandom } from './utils/random';
 import { createControls } from './ui/controls';
@@ -53,7 +54,7 @@ function restoreHistory(redo: boolean): void {
   if (!snapshot) return;
   saved = snapshot; active = styles.findIndex(item => item.id === saved.activeStyle);
   for (const selected of selections.values()) selected.clear();
-  currentLetter = saved.wordMode ? wordInstances(saved.word)[0] : focused ?? 'A';
+  currentLetter = saved.wordMode ? wordInstances(saved.word)[0] : glyphKey(focused ?? 'A');
   historyGroup = ''; updateView(); notify(redo ? 'Change redone; selection cleared' : 'Change undone; selection cleared');
 }
 let active = styles.findIndex(style => style.id === saved.activeStyle);
@@ -86,8 +87,8 @@ app.innerHTML = `
     </nav>
     <div class="workspace">
       <section class="specimen" aria-label="Alphabet specimen">
-        <div class="specimen-heading"><div><span class="status-dot"></span><span class="specimen-name"></span><span class="specimen-divider">/</span><span class="specimen-subtitle"></span></div><button class="text-button back-button" data-action="back" hidden>← All letters</button><span class="specimen-count">A–Z / 26 GLYPHS</span></div>
-        <div class="word-toolbar"><button class="text-button" data-action="word">Make a word ↗</button><label class="word-input-label" hidden>Word<input id="word-input" type="text" maxlength="16" autocomplete="off" spellcheck="false" aria-describedby="word-help"></label><span id="word-help" hidden>Letters A–Z only · up to 16</span></div>
+        <div class="specimen-heading"><div><span class="status-dot"></span><span class="specimen-name"></span><span class="specimen-divider">/</span><span class="specimen-subtitle"></span></div><button class="text-button back-button" data-action="back" hidden>← All glyphs</button><span class="specimen-count">A–Z / SYMBOLS / 0–9</span></div>
+        <div class="word-toolbar"><button class="text-button" data-action="word">Make a word ↗</button><label class="word-input-label" hidden>Text<input id="word-input" type="text" maxlength="64" autocomplete="off" spellcheck="false" aria-describedby="word-help"></label><span id="word-help" hidden>Letters, numbers, symbols &amp; spaces · up to 64</span></div>
         <div id="alphabet" class="alphabet"></div>
         <div class="specimen-bottom"><span class="specimen-instruction"></span><span class="seed-stamp"></span></div>
       </section>
@@ -143,7 +144,7 @@ function requestDraw(): void {
 }
 function targets(): string[] {
   const ids = (instance: string) => pixelIds(letterOf(instance)).map(id => `${instance}:${id.split(':').slice(-2).join(':')}`);
-  if (scope === 'alphabet') return (saved.wordMode ? wordInstances(saved.word) : LETTERS).flatMap(ids);
+  if (scope === 'alphabet') return (saved.wordMode ? wordInstances(saved.word) : VISIBLE_CHARACTERS.map(glyphKey)).flatMap(ids);
   if (scope === 'letter') return ids(currentLetter);
   return [...selection()];
 }
@@ -153,7 +154,7 @@ function updateSelectionUI(): void {
   el<HTMLSelectElement>('#scope').value = scope;
   el<HTMLSelectElement>('#scope').options[2].textContent = saved.wordMode ? 'Entire word' : 'Entire alphabet';
   const picker = el<HTMLSelectElement>('#current-letter');
-  picker.replaceChildren(...(saved.wordMode ? wordInstances(saved.word) : LETTERS).map((instance, index) => new Option(saved.wordMode ? `${letterOf(instance)} · position ${index + 1}` : instance, instance)));
+  picker.replaceChildren(...(saved.wordMode ? wordInstances(saved.word) : VISIBLE_CHARACTERS.map(glyphKey)).map((instance, index) => new Option(saved.wordMode ? `${letterOf(instance) === ' ' ? 'Space' : letterOf(instance)} · position ${index + 1}` : letterOf(instance), instance)));
   el<HTMLSelectElement>('#current-letter').value = currentLetter;
   el('.letter-picker').hidden = scope !== 'letter';
   const ids = targets();
@@ -215,13 +216,13 @@ function updateView(): void {
 function switchStyle(index: number): void {
   active = (index + styles.length) % styles.length; saved.activeStyle = style().id;
   selection().clear();
-  currentLetter = saved.wordMode ? wordInstances(saved.word)[0] : focused ?? 'A';
+  currentLetter = saved.wordMode ? wordInstances(saved.word)[0] : glyphKey(focused ?? 'A');
   updateView();
   el('#control-panel').scrollTop = 0;
 }
 function focusLetter(letter: string): void {
   if (focused === letter) return;
-  focused = letter; currentLetter = letter; updateView();
+  focused = letter; currentLetter = glyphKey(letter); updateView();
   el('#control-panel').scrollTop = 0;
   el<HTMLButtonElement>('.back-button').focus({ preventScroll: true });
   if (matchMedia('(max-width: 600px)').matches) el('.specimen').scrollIntoView({ block: 'start' });
@@ -268,7 +269,7 @@ function action(name: string): void {
     case 'download-svg': saveSvg(); break;
     case 'word': saved.wordMode = true; focused = null; currentLetter = wordInstances(saved.word)[0]; selection().clear(); updateView(); el<HTMLInputElement>('#word-input').focus(); break;
     case 'reset-positions': state().positions ??= {}; for (const id of targets()) state().positions![id] = { x: 0, y: 0 }; requestDraw(); notify('Pixel positions restored for the active scope'); break;
-    case 'back': { const letter = focused; focused = null; saved.wordMode = false; currentLetter = 'A'; selection().clear(); updateView(); if (letter) el<HTMLButtonElement>(`.glyph-open[data-focus="${letter}"]`).focus({ preventScroll: true }); else el<HTMLButtonElement>('[data-action="word"]').focus({ preventScroll: true }); break; }
+    case 'back': { const letter = focused; focused = null; saved.wordMode = false; currentLetter = 'A'; selection().clear(); updateView(); if (letter) [...app.querySelectorAll<HTMLButtonElement>('.glyph-open')].find(button => button.dataset.focus === letter)?.focus({ preventScroll: true }); else el<HTMLButtonElement>('[data-action="word"]').focus({ preventScroll: true }); break; }
     case 'deselect': clearSelection(); break;
     case 'panel': panelHidden = !panelHidden; el('.workspace').classList.toggle('panel-hidden', panelHidden); el('#control-panel').hidden = panelHidden; el('.controls-toggle').setAttribute('aria-expanded', String(!panelHidden)); el('.toggle-label').textContent = panelHidden ? 'Show controls' : 'Hide controls'; break;
     case 'theme': theme = theme === 'light' ? 'dark' : 'light'; applyTheme(); try { localStorage.setItem(THEME_KEY, theme); } catch { /* Theme persistence is optional. */ } break;
@@ -289,12 +290,12 @@ app.addEventListener('click', event => {
   if (target.closest('#alphabet')) clearSelection();
 });
 el('#scope').addEventListener('change', event => { scope = (event.target as HTMLSelectElement).value as Scope; updateSelectionUI(); });
-el('#current-letter').addEventListener('change', event => { currentLetter = (event.target as HTMLSelectElement).value; if (focused) { focused = currentLetter; updateView(); } else updateSelectionUI(); });
+el('#current-letter').addEventListener('change', event => { currentLetter = (event.target as HTMLSelectElement).value; if (focused) { focused = letterOf(currentLetter); updateView(); } else updateSelectionUI(); });
 el('#word-input').addEventListener('input', event => {
   const input = event.target as HTMLInputElement;
   const word = cleanWord(input.value);
   input.value = word;
-  if (!word) { input.setCustomValidity('Enter at least one letter.'); return; }
+  if (!word) { input.setCustomValidity('Enter at least one character.'); return; }
   input.setCustomValidity(''); saved.word = word; for (const state of Object.values(saved.styles)) pruneWordEdits(state, word); currentLetter = wordInstances(word)[0]; selection().clear();
   el('.specimen-subtitle').textContent = `Word / ${word}`;
   updateSelectionUI(); requestDraw();

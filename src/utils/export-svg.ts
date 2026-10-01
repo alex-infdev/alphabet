@@ -2,6 +2,7 @@ import type { AlphabetStyle, StyleState } from '../types';
 import { svgElement } from './svg';
 import { wordInstances } from './composition';
 import { wordLayout } from './word-layout';
+import { isSupported, glyphKey } from '../styles/characters';
 
 export interface SvgExportOptions {
   letters: string[];
@@ -12,8 +13,8 @@ export interface SvgExportOptions {
 
 /** A standalone, still vector specimen with one editable group per letter. */
 export function exportSvg(style: AlphabetStyle, state: StyleState, options: SvgExportOptions): string {
-  const letters = (options.word ? [...options.word] : [...new Set(options.letters)]).filter(letter => /^[A-Z]$/.test(letter));
-  if (!letters.length) throw new Error('Choose at least one letter from A to Z.');
+  const letters = (options.word !== undefined ? [...options.word] : [...new Set(options.letters)]).map(letter => letter.toUpperCase());
+  if (!letters.length || letters.some(letter => !isSupported(letter))) throw new Error('Choose supported letters, numbers, symbols, or spaces.');
   const columns = options.word ? letters.length : Math.min(7, letters.length);
   const rows = Math.ceil(letters.length / columns);
   const gapX = Number(state.params.spacing ?? 14);
@@ -27,7 +28,7 @@ export function exportSvg(style: AlphabetStyle, state: StyleState, options: SvgE
   const title = svgElement('title');
   title.textContent = `${style.name} / ${letters.join('')}`;
   const description = svgElement('desc');
-  description.textContent = 'Alphabet Lab. Editable vector artwork. Botanical characters remain text in Courier New, with a monospace fallback. Exported in the still pose.';
+  description.textContent = 'Alphabet Lab. Still editable vector artwork. Botanical ASCII marks are outlined paths; Soft Pixel uses individual tile shapes. No fonts required.';
   const metadata = svgElement('metadata');
   metadata.textContent = JSON.stringify({ version: 2, style: style.id, letters, word: options.word, parameters: state.params, pixelEdits: state.edits, pixelPositions: state.positions });
   svg.append(title, description, metadata);
@@ -48,7 +49,7 @@ export function exportSvg(style: AlphabetStyle, state: StyleState, options: SvgE
       element.removeAttribute('aria-pressed');
     }
     const group = svgElement('g', {
-      id: options.word ? `letter-${index}-${letter}` : `letter-${letter}`,
+      id: options.word ? `letter-${index}-${glyphKey(letter)}` : `letter-${glyphKey(letter)}`,
       transform: `translate(${layout?.glyphs[index].x ?? padding + (index % columns) * (specimenWidth + gapX)} ${padding + Math.floor(index / columns) * (150 + gapY)})`,
     });
     group.append(...Array.from(glyph.childNodes));

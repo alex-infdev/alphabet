@@ -7,7 +7,7 @@ export function renderWord(container: HTMLElement, style: AlphabetStyle, state: 
   container.className = 'alphabet word-canvas';
   const { width, glyphs } = wordLayout(style, state, word);
   const svg = svgElement('svg', { viewBox: `0 0 ${width} 262`, class: 'word-svg', 'aria-label': `Word ${word}, ${style.name}` });
-  svg.style.minWidth = `${Math.max(320, word.length * 100)}px`;
+  svg.style.minWidth = `${Math.max(320, width)}px`;
   wordInstances(word).forEach((instance, index) => {
     const glyph = style.renderGlyph({ letter: word[index], instance, layout: 'word', state, selected, interactive: Boolean(style.editablePixels) });
     glyph.setAttribute('x', String(glyphs[index].x)); glyph.setAttribute('y', '56');

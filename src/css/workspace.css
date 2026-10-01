@@ -88,3 +88,26 @@
     column-gap: 28px;
   }
 }
+
+/* Three distinct gallery sections share a scrollable specimen on desktop. */
+.glyph-section-title {
+  grid-column: 1 / -1;
+  margin: 10px 0 0;
+  padding: 10px 0 6px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font: 11px var(--mono);
+  letter-spacing: .06em;
+}
+.alphabet:not(.is-focused):not(.word-canvas) {
+  grid-template-rows: none;
+  align-content: start;
+}
+@media (min-width: 1151px) {
+  .alphabet:not(.is-focused):not(.word-canvas) {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-right: 10px;
+  }
+  .alphabet:not(.is-focused):not(.word-canvas) .glyph-cell { height: 134px; }
+}

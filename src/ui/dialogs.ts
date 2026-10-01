@@ -57,8 +57,8 @@ export function createDialogs(options: {
     });
   }
   function openExport(): void {
-    openDialog(`<p class="eyebrow">TAKE THE LETTERS WITH YOU</p><h2>Export a specimen.</h2>
-      <p>Editable SVG, ready for your vector editor. Wind exports as a still letterform.</p>
+    openDialog(`<h2>Export SVG</h2>
+      <p>Editable SVG. Wind animation exports as a still frame.</p>
       <label class="scope-label">Letters to export<select id="export-scope">
         ${options.saved().wordMode ? '<option value="word">Current word canvas</option>' : ''}
         ${options.focused() ? `<option value="focused">Focused letter: ${options.focused()}</option>` : ''}
@@ -99,7 +99,7 @@ export function createDialogs(options: {
     const json = configurationJSON(options.saved());
     try { await navigator.clipboard.writeText(json); notify('Configuration copied'); }
     catch {
-      openDialog('<p class="eyebrow">YOUR SPECIMEN</p><h2>Take the rules with you.</h2><p>Clipboard access is unavailable. Select and copy this configuration.</p><textarea class="config-fallback" aria-label="Configuration JSON" readonly></textarea>');
+      openDialog('<h2>Copy configuration</h2><p>Clipboard access is unavailable. Select and copy the JSON.</p><textarea class="config-fallback" aria-label="Configuration JSON" readonly></textarea>');
       el<HTMLTextAreaElement>('.config-fallback').value = json; el<HTMLTextAreaElement>('.config-fallback').select();
     }
   }

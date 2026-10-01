@@ -65,8 +65,8 @@ function renderGlyph({ letter, state }: RenderContext): SVGSVGElement {
 }
 
 export const botanical: AlphabetStyle = {
-  id: 'botanical', name: 'Botanical ASCII', subtitle: 'An alphabet, grown from characters.',
-  description: 'Tiny characters. Organic rules. A living alphabet that grows a little differently every time.',
+  id: 'botanical', name: 'Botanical ASCII', subtitle: 'ASCII letterforms',
+  description: 'Letterforms built from ASCII characters.',
   material: 'CHARACTERS / ORGANIC',
   defaults: { characters: '', density: 0.72, growth: 0.6, branching: 0.45, flowers: 0.42, distortion: 0.45, spacing: 14, rowSpacing: 16, scale: 0.95, lineHeight: 1, seed: 2048, labels: true, windEnabled: false, windIntensity: 40, windDirection: 'left', windSpeed: 1 } satisfies BotanicalParameters,
   controls: [

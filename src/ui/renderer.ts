@@ -40,12 +40,6 @@ export function renderAlphabet(container: HTMLElement, style: AlphabetStyle, sta
     next.set(letter, { key, cell });
     fragment.append(cell);
   }
-  if (!focused) {
-    const colophon = document.createElement('div');
-    colophon.className = 'specimen-colophon';
-    colophon.innerHTML = '<span class="colophon-flower" aria-hidden="true">✳</span><span>26 letters.<br>Endless possibilities.</span>';
-    fragment.append(colophon);
-  }
   container.replaceChildren(fragment);
   cache.set(container, next);
 }

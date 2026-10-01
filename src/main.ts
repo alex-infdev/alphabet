@@ -74,13 +74,11 @@ const selection = () => selections.get(style().id)!;
 app.innerHTML = `
   <header class="site-header">
     <a class="wordmark" href="./" aria-label="Alphabet Lab home"><span class="brand-mark" aria-hidden="true">a<span>✳</span></span><span>ALPHABET<br>LAB</span></a>
-    <p class="header-note">An ongoing exploration<br>of letters & their possibilities.</p>
     <div class="header-actions"><button class="theme-toggle icon-button" data-action="theme" aria-label="Switch to dark mode" aria-pressed="false"><span class="theme-icon" aria-hidden="true"></span></button><button class="text-button about-button" data-action="about">About the project <span aria-hidden="true">↗</span></button></div>
   </header>
   <main>
     <section class="intro" aria-labelledby="page-title">
-      <div><p class="eyebrow">EXPERIMENTAL TYPE PLAYGROUND <span class="tiny-cross">+</span> VOL. 001</p><h1 id="page-title">A study in form<span class="title-period">.</span></h1></div>
-      <p class="intro-copy">An alphabet is only the beginning.<br>Play with the rules. Find your own language.</p>
+      <h1 id="page-title">Alphabet playground</h1>
     </section>
     <nav class="style-nav" aria-label="Alphabet styles">
       <div class="style-tabs">${styles.map((entry, index) => `<button class="style-tab" data-style="${index}" aria-pressed="false"><span class="tab-number">${String(index + 1).padStart(2, '0')}</span>${entry.name}<span class="active-dot" aria-hidden="true"></span></button>`).join('')}</div>
@@ -94,7 +92,7 @@ app.innerHTML = `
         <div class="specimen-bottom"><span class="specimen-instruction"></span><span class="seed-stamp"></span></div>
       </section>
       <aside id="control-panel" class="control-panel" aria-label="Style controls">
-        <div class="panel-heading"><h2>Make it your own</h2><span aria-hidden="true">↙</span></div>
+        <div class="panel-heading"><h2>Controls</h2></div>
         <p class="panel-description"></p>
         <section class="pixel-editor" hidden aria-label="Pixel editing"><div class="section-label">EDITING SCOPE <span class="selected-count"></span></div><label class="scope-label">Apply scale to<select id="scope"><option value="selection">Selected pixels</option><option value="letter">Current letter</option><option value="alphabet">Entire alphabet</option></select></label><label class="scope-label letter-picker">Current letter<select id="current-letter">${LETTERS.map(letter => `<option>${letter}</option>`).join('')}</select></label><div id="selection-scale"></div><p class="selection-help" role="status"></p><p id="pixel-instructions" class="panel-footnote">Tab enters the pixel canvas. Alt + arrows moves focus; Enter or Space selects. Shift adds to selection. Arrow keys nudge; Shift moves 5 steps. With Snap to grid, each step is 5 units.</p><button class="text-button clear-selection" data-action="deselect">Clear selection</button></section>
         <div class="section-label parameters-heading">FORM & CHARACTER <span>↕</span></div>
@@ -103,11 +101,10 @@ app.innerHTML = `
         <div class="secondary-actions"><button class="text-button" data-action="undo" disabled>Undo</button><button class="text-button" data-action="redo" disabled>Redo</button></div><div class="secondary-actions"><button class="text-button" data-action="randomize">↝ Randomize</button><button class="text-button" data-action="reset">↺ Reset</button></div>
         <button class="copy-button" data-action="copy"><span>Copy configuration</span><span aria-hidden="true">↗</span></button>
         <button class="copy-button" data-action="configuration">Import / save configuration</button><button class="copy-button" data-action="export"><span>Export SVG</span><span aria-hidden="true">↓</span></button>
-        <p class="panel-footnote">A small change. A different alphabet.</p>
       </aside>
     </div>
   </main>
-  <footer class="site-footer"><span>BUILT FROM RULES. MADE FOR PLAY.</span><div class="shortcuts"><span><kbd>←</kbd><kbd>→</kbd> Switch style</span><span><kbd>R</kbd> Randomize</span><span><kbd>space</kbd> Regenerate</span><span><kbd>H</kbd> Hide controls</span></div><span class="footer-edition">ALPHABET LAB © ${new Date().getFullYear()}</span></footer>
+  <footer class="site-footer"><div class="shortcuts"><span><kbd>←</kbd><kbd>→</kbd> Switch style</span><span><kbd>R</kbd> Randomize</span><span><kbd>space</kbd> Regenerate</span><span><kbd>H</kbd> Hide controls</span></div><span class="footer-edition">ALPHABET LAB © ${new Date().getFullYear()}</span></footer>
   <div class="toast" role="status" aria-live="polite"></div>
   <dialog class="about-dialog"><button class="dialog-close icon-button" data-action="close-dialog" aria-label="Close dialog">×</button><div class="dialog-content"></div></dialog>
 `;
@@ -187,7 +184,7 @@ function updateView(): void {
   el<HTMLInputElement>('#word-input').value = saved.word;
   el<HTMLButtonElement>('[data-action="word"]').textContent = saved.wordMode ? 'Word canvas' : 'Make a word ↗';
   el('.reset-positions').hidden = !item.editablePixels;
-  el('.specimen-instruction').textContent = item.editablePixels ? 'Drag pixels to arrange · Shift + click to group · Arrow keys to nudge' : saved.wordMode ? 'Your letters, growing together. Scroll sideways for longer words.' : focused ? 'Your own little ecosystem. Adjust the rules and watch it grow.' : 'Click any letter to look a little closer';
+  el('.specimen-instruction').textContent = item.editablePixels ? 'Drag to move · Shift + click to group · Arrows to nudge' : saved.wordMode ? 'Scroll sideways for longer words.' : focused ? 'Adjust the controls to edit this letter.' : 'Click a letter to focus.';
   const onChange = (key: string, value: number | string | boolean) => { state().params[key] = value; requestDraw(); };
   el('#parameters').replaceChildren(createControls(item.controls.filter(control => !control.group && control.type !== 'action'), state().params, onChange, action));
   const windControls = item.controls.filter(control => control.group === 'wind');
@@ -263,8 +260,8 @@ function action(name: string): void {
     case 'configuration': openConfiguration(); break;
     case 'previous': switchStyle(active - 1); break;
     case 'next': switchStyle(active + 1); break;
-    case 'regenerate': state().params.seed = newSeed(); updateView(); notify('A new variation, from the same rules'); break;
-    case 'randomize': { const seed = newSeed(); state().params = sanitizeParams(style(), { ...state().params, ...style().randomize?.(seededRandom(seed)), seed }); updateView(); notify('A fresh set of possibilities'); break; }
+    case 'regenerate': state().params.seed = newSeed(); updateView(); notify('Regenerated'); break;
+    case 'randomize': { const seed = newSeed(); state().params = sanitizeParams(style(), { ...state().params, ...style().randomize?.(seededRandom(seed)), seed }); updateView(); notify('Parameters randomized'); break; }
     case 'reset': saved.styles[style().id] = { params: { ...style().defaults }, edits: {}, positions: {} }; selection().clear(); updateView(); notify('This alphabet has been reset'); break;
     case 'copy': void copyConfig(); break;
     case 'export': openExport(); break;
@@ -275,7 +272,7 @@ function action(name: string): void {
     case 'deselect': clearSelection(); break;
     case 'panel': panelHidden = !panelHidden; el('.workspace').classList.toggle('panel-hidden', panelHidden); el('#control-panel').hidden = panelHidden; el('.controls-toggle').setAttribute('aria-expanded', String(!panelHidden)); el('.toggle-label').textContent = panelHidden ? 'Show controls' : 'Hide controls'; break;
     case 'theme': theme = theme === 'light' ? 'dark' : 'light'; applyTheme(); try { localStorage.setItem(THEME_KEY, theme); } catch { /* Theme persistence is optional. */ } break;
-    case 'about': openDialog('<p class="eyebrow">AN ONGOING EXPLORATION / VOL. 001</p><h2>Letters with<br>a life of their own.</h2><p>Alphabet Lab is a small playground for generative typography. Twenty-six familiar forms, reimagined through two very different sets of rules.</p><p>Botanical ASCII grows letters from stems, leaves, and flowers made entirely of text characters. Soft Pixel builds them from individual modules you can select and reshape.</p><p>There is no finished version. Change a rule. Follow a happy accident. Make something that feels like yours.</p><div class="about-shortcuts"><kbd>← →</kbd> Switch alphabets<br><kbd>R</kbd> Randomize parameters<br><kbd>Space</kbd> Regenerate with a new seed<br><kbd>H</kbd> Show or hide controls<br><kbd>Esc</kbd> Leave focus or clear selection</div><p class="panel-footnote">Your settings are saved in this browser. Copy a configuration to keep a reproducible record.</p>'); break;
+    case 'about': openDialog('<h2>Alphabet Lab</h2><p>Botanical ASCII builds letters from text characters. Soft Pixel reconstructs Ambicase Modern with editable modules.</p><div class="about-shortcuts"><kbd>← →</kbd> Switch alphabets<br><kbd>R</kbd> Randomize parameters<br><kbd>Space</kbd> Regenerate<br><kbd>H</kbd> Show or hide controls<br><kbd>Esc</kbd> Leave focus or clear selection</div><p class="panel-footnote">Settings are saved in this browser. Export a configuration to keep or share them.</p>'); break;
     case 'close-dialog': el<HTMLDialogElement>('dialog').close(); break;
   }
 }

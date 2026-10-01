@@ -1,0 +1,42 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Ambicase Modern / Soft Pixel comparison</title>
+<style>
+body { margin: 24px; background: #faf9f4; color: #292b26; font: 14px system-ui; --ink: #292b26; }
+header { position: sticky; top: 0; padding: 12px; background: #faf9f4; z-index: 1; }
+main { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; }
+article { border: 1px solid #ddd; padding: 8px; }
+svg { width: 100%; display: block; }
+.pixel-outline { display: none; } .pixel-shape { fill: currentColor; }
+.reference { fill: #b44057; } .baseline { stroke: #888; stroke-width: .3; }
+body[data-mode="reference"] .soft { display: none; }
+body[data-mode="soft"] .reference { display: none; }
+body[data-mode="overlay"] .reference { opacity: .4; }
+body[data-mode="side"] article { grid-column: span 1; } body[data-mode="side"] .pair { display: flex; }
+body[data-mode="side"] svg { width: 50%; }
+</style>
+<header>Development comparison: shared baseline, scale and proportional outlines.
+<select id="mode"><option value="side">Side by side</option><option value="overlay">Overlay</option><option value="reference">Reference</option><option value="soft">Soft Pixel</option></select></header>
+<main></main>
+<script type="module">
+import reference from './ambicase-reference.json';
+import { softPixel } from '../src/styles/soft-pixel.ts';
+import { FONT_SCALE, BASELINE, GALLERY_WIDTH } from '../src/styles/ambicase.ts';
+const main = document.querySelector('main');
+function render() {
+ document.body.dataset.mode = mode.value; main.replaceChildren();
+ for (const [letter, glyph] of Object.entries(reference.glyphs)) {
+  const article = document.createElement('article'); article.textContent = `${letter} / ${glyph.advance}`;
+  const pair = document.createElement('div'); pair.className = 'pair';
+  const svg = softPixel.renderGlyph({ letter, state: { params: softPixel.defaults, edits: {} }, selected: new Set(), interactive: false });
+  svg.querySelector('g').classList.add('soft');
+  const origin = (GALLERY_WIDTH - glyph.advance * FONT_SCALE * softPixel.defaults.scale) / 2;
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d', glyph.path); path.setAttribute('transform', `translate(${origin} ${BASELINE}) scale(${FONT_SCALE * softPixel.defaults.scale})`); path.classList.add('reference');
+  if (mode.value === 'side') { const ref = svg.cloneNode(false); ref.append(path); pair.append(ref); } else svg.append(path);
+  const baseline = document.createElementNS('http://www.w3.org/2000/svg','path'); baseline.setAttribute('d', `M0 ${BASELINE}H${GALLERY_WIDTH}`); baseline.classList.add('baseline'); svg.append(baseline);
+  pair.append(svg); article.append(pair); main.append(article);
+ }
+}
+mode.onchange = render; render();
+</script>

@@ -5,3 +5,4 @@ dist/
 .qa/
 test-results/
 playwright-report/
+dev/*.png

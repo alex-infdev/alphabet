@@ -8,7 +8,7 @@ export const instanceOf = (id: string): string => id.split(':').slice(0, -2).joi
 export const letterOf = (instance: string): string => instance.slice(-1);
 export const pixelScale = (state: StyleState, id: string): number => state.edits[id] ?? state.edits[basePixelId(id)] ?? 1;
 export const pixelPosition = (state: StyleState, id: string): { x: number; y: number } => state.positions?.[id] ?? state.positions?.[basePixelId(id)] ?? { x: 0, y: 0 };
-export const validPixelId = (id: string): boolean => /^(?:w@(?:[0-9]|1[0-5]):)?[A-Z]:[0-6]:[0-4]$/.test(id);
+export const validPixelId = (id: string): boolean => /^(?:w@(?:[0-9]|1[0-5]):)?[A-Z]:(?:[0-9]|[12][0-9]|3[01]):(?:[0-9]|[12][0-9]|30)$/.test(id);
 
 /** Retain only current occurrences; replaced letters cannot inherit unrelated overrides. */
 export function pruneWordEdits(state: StyleState, word: string): void {

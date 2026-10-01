@@ -1,6 +1,7 @@
 import type { AlphabetStyle, StyleState } from '../types';
 import { svgElement } from './svg';
 import { wordInstances } from './composition';
+import { wordLayout } from './word-layout';
 
 export interface SvgExportOptions {
   letters: string[];
@@ -18,7 +19,9 @@ export function exportSvg(style: AlphabetStyle, state: StyleState, options: SvgE
   const gapX = Number(state.params.spacing ?? 14);
   const gapY = Number(state.params.rowSpacing ?? 16);
   const padding = 56;
-  const width = padding * 2 + columns * 120 + (columns - 1) * gapX;
+  const layout = options.word ? wordLayout(style, state, options.word) : undefined;
+  const specimenWidth = style.specimenWidth ?? 120;
+  const width = layout?.width ?? padding * 2 + columns * specimenWidth + (columns - 1) * gapX;
   const height = padding * 2 + rows * 150 + (rows - 1) * gapY;
   const svg = svgElement('svg', { viewBox: `0 0 ${width} ${height}`, width, height, fill: options.ink, color: options.ink });
   const title = svgElement('title');
@@ -34,7 +37,7 @@ export function exportSvg(style: AlphabetStyle, state: StyleState, options: SvgE
   // dependency on the current viewport. The live specimen is never mutated.
   const stillState = { ...state, params: { ...state.params, windEnabled: false } };
   letters.forEach((letter, index) => {
-    const glyph = style.renderGlyph({ letter, instance: options.word ? wordInstances(options.word)[index] : undefined, state: stillState, selected: new Set(), interactive: false });
+    const glyph = style.renderGlyph({ letter, instance: options.word ? wordInstances(options.word)[index] : undefined, layout: options.word ? 'word' : undefined, state: stillState, selected: new Set(), interactive: false });
     glyph.querySelectorAll('.pixel-outline').forEach(outline => outline.remove());
     glyph.querySelectorAll('.pixel-shape').forEach(pixel => pixel.setAttribute('fill', options.ink));
     for (const element of [glyph, ...glyph.querySelectorAll('*')]) {
@@ -46,7 +49,7 @@ export function exportSvg(style: AlphabetStyle, state: StyleState, options: SvgE
     }
     const group = svgElement('g', {
       id: options.word ? `letter-${index}-${letter}` : `letter-${letter}`,
-      transform: `translate(${padding + (index % columns) * (120 + gapX)} ${padding + Math.floor(index / columns) * (150 + gapY)})`,
+      transform: `translate(${layout?.glyphs[index].x ?? padding + (index % columns) * (specimenWidth + gapX)} ${padding + Math.floor(index / columns) * (150 + gapY)})`,
     });
     group.append(...Array.from(glyph.childNodes));
     svg.append(group);

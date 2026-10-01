@@ -9,12 +9,12 @@ async function config(page: Page) { await action(page, 'configuration').click();
 
 test('legacy migration, stable repeated-letter identity, persistence and cleanup', async ({ page }) => {
   await page.addInitScript(() => {
-    if (!localStorage.getItem('alphabet-lab:v1')) localStorage.setItem('alphabet-lab:v1', JSON.stringify({ version: 1, activeStyle: 'soft-pixel', word: 'LETTER', wordMode: true, styles: { 'soft-pixel': { params: {}, edits: { 'LETTER@2:T:0:0': 1.5, 'OTHER@0:O:0:0': 1.7 }, positions: { 'LETTER@2:T:0:0': { x: 4, y: 3 } } } } }));
+    if (!localStorage.getItem('alphabet-lab:v1')) localStorage.setItem('alphabet-lab:v1', JSON.stringify({ version: 1, activeStyle: 'soft-pixel', word: 'LETTER', wordMode: true, styles: { 'soft-pixel': { params: {}, edits: { 'LETTER@2:T:7:3': 1.5, 'OTHER@0:O:0:0': 1.7 }, positions: { 'LETTER@2:T:7:3': { x: 4, y: 3 } } } } }));
   });
   await page.goto('/'); await expect.poll(async () => (await saved(page)).version).toBe(2);
   await page.locator('#word-input').fill('LETTERS');
   await expect.poll(async () => (await saved(page)).word).toBe('LETTERS');
-  expect((await saved(page)).styles['soft-pixel'].edits).toEqual({ 'w@2:T:0:0': 1.5 });
+  expect((await saved(page)).styles['soft-pixel'].edits).toEqual({ 'w@2:T:7:3': 1.5 });
   await page.reload(); await expect(page.locator('#word-input')).toHaveValue('LETTERS');
   await page.locator('#word-input').fill('LE');
   await expect.poll(async () => Object.keys((await saved(page)).styles['soft-pixel'].edits).length).toBe(0);
@@ -22,7 +22,7 @@ test('legacy migration, stable repeated-letter identity, persistence and cleanup
 
 test('selection, scaling, keyboard nudge, roving focus, undo and redo', async ({ page }) => {
   await word(page, 'TT');
-  const pixel = page.locator('[data-pixel="w@0:T:0:0"]');
+  const pixel = page.locator('[data-pixel="w@0:T:7:3"]');
   await pixel.click(); await pixel.focus(); await page.keyboard.press('ArrowRight');
   await expect(pixel).toHaveAttribute('transform', 'translate(1 0)'); await expect(pixel).toBeFocused();
   await expect(page.locator('[data-pixel][tabindex="0"]')).toHaveCount(1);
@@ -30,14 +30,14 @@ test('selection, scaling, keyboard nudge, roving focus, undo and redo', async ({
   await page.keyboard.press('Control+Shift+z'); await expect(pixel).toHaveAttribute('transform', 'translate(1 0)');
   await pixel.click();
   await page.locator('input[name="selectedScale"]').fill('1.5');
-  await expect.poll(async () => (await saved(page)).styles['soft-pixel'].edits['w@0:T:0:0']).toBe(1.5);
-  expect((await saved(page)).styles['soft-pixel'].edits['w@1:T:0:0']).toBeUndefined();
+  await expect.poll(async () => (await saved(page)).styles['soft-pixel'].edits['w@0:T:7:3']).toBe(1.5);
+  expect((await saved(page)).styles['soft-pixel'].edits['w@1:T:7:3']).toBeUndefined();
   await pixel.focus(); await page.keyboard.press('Alt+ArrowRight'); await expect(pixel).not.toBeFocused();
   await page.keyboard.press('Space'); await expect(page.locator('[data-pixel][aria-pressed="true"]')).toHaveCount(1);
 });
 
 test('drag commits one undo step and cancel restores positions', async ({ page }) => {
-  await word(page, 'A'); const pixel = page.locator('[data-pixel="w@0:A:0:1"]'); const id = await pixel.getAttribute('data-pixel');
+  await word(page, 'A'); const pixel = page.locator('[data-pixel="w@0:A:6:10"]'); const id = await pixel.getAttribute('data-pixel');
   const box = (await pixel.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 22, box.y + box.height / 2 + 8, { steps: 6 }); await page.mouse.up();
@@ -108,7 +108,7 @@ test('responsive layout, focused-letter return and screenshots', async ({ page }
 
 test('multi-selection movement and scoped position reset are reversible', async ({ page }) => {
   await word(page, 'TT');
-  const first = page.locator('[data-pixel="w@0:T:0:0"]'); const second = page.locator('[data-pixel="w@0:T:0:1"]');
+  const first = page.locator('[data-pixel="w@0:T:7:3"]'); const second = page.locator('[data-pixel="w@0:T:7:4"]');
   await first.click(); await second.click({ modifiers: ['Shift'] });
   await expect(page.locator('[data-pixel][aria-pressed="true"]')).toHaveCount(2);
   await second.focus(); await page.keyboard.press('Shift+ArrowDown');
@@ -120,7 +120,7 @@ test('multi-selection movement and scoped position reset are reversible', async 
 
 test('touch dragging and cancellation', async ({ page, context }, info) => {
   test.skip(info.project.name !== 'mobile', 'Touch-only mobile input coverage.');
-  await word(page, 'A'); const pixel = page.locator('[data-pixel="w@0:A:0:1"]');
+  await word(page, 'A'); const pixel = page.locator('[data-pixel="w@0:A:6:10"]');
   await pixel.scrollIntoViewIfNeeded(); const box = (await pixel.boundingBox())!;
   const session = await context.newCDPSession(page);
   const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -149,7 +149,7 @@ test('layout-only controls reuse glyphs and dialogs contain keyboard focus', asy
 
 test('alphabet cache does not retain direct drag transforms or selection after undo', async ({ page }) => {
   await page.goto('/'); await page.locator('[data-style="1"]').click();
-  const pixel = page.locator('[data-pixel="A:0:1"]'); await pixel.scrollIntoViewIfNeeded();
+  const pixel = page.locator('[data-pixel="A:6:10"]'); await pixel.scrollIntoViewIfNeeded();
   const box = (await pixel.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 10, box.y + box.height / 2 + 10); await page.mouse.up();
@@ -165,12 +165,12 @@ test('optional pixel grid snaps dragging and nudging, persists and supports undo
   await expect(toggle).not.toBeChecked(); await toggle.check();
   await action(page, 'undo').click(); await expect(toggle).not.toBeChecked();
   await action(page, 'redo').click(); await expect(toggle).toBeChecked();
-  const pixel = page.locator('[data-pixel="w@0:A:0:1"]');
+  const pixel = page.locator('[data-pixel="w@0:A:6:10"]');
   await pixel.scrollIntoViewIfNeeded(); const box = (await pixel.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 17, box.y + box.height / 2 + 11); await page.mouse.up();
-  await expect.poll(async () => (await saved(page)).styles['soft-pixel'].positions['w@0:A:0:1']?.x ?? 0).not.toBe(0);
-  const position = (await saved(page)).styles['soft-pixel'].positions['w@0:A:0:1'];
+  await expect.poll(async () => (await saved(page)).styles['soft-pixel'].positions['w@0:A:6:10']?.x ?? 0).not.toBe(0);
+  const position = (await saved(page)).styles['soft-pixel'].positions['w@0:A:6:10'];
   expect(position.x % 5).toBe(0); expect(position.y % 5).toBe(0);
   await action(page, 'undo').click(); await expect(pixel).toHaveAttribute('transform', 'translate(0 0)');
   await pixel.focus(); await page.keyboard.press('ArrowRight'); await expect(pixel).toHaveAttribute('transform', 'translate(5 0)');

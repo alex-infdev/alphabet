@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { seededRandom } from '../src/utils/random.ts';
-import { LETTERS, SKELETONS, BITMAPS, pixelIds } from '../src/styles/glyphs.ts';
+import { LETTERS, SKELETONS, pixelIds } from '../src/styles/glyphs.ts';
+import { AMBICASE, ambicaseGlyph, ambicaseWidth } from '../src/styles/ambicase.ts';
+import { wordLayout } from '../src/utils/word-layout.ts';
 import { initialState, sanitizeParams } from '../src/state.ts';
 import { cleanAscii, cleanWord, pixelPosition, pixelScale, wordInstances } from '../src/utils/composition.ts';
 import type { AlphabetStyle } from '../src/types.ts';
@@ -17,16 +19,47 @@ test('both systems cover all 26 letters with valid, nonempty geometry and unique
   const allIds = LETTERS.flatMap(pixelIds);
   assert.equal(new Set(allIds).size, allIds.length);
   assert.equal(Object.keys(SKELETONS).length, 26);
-  assert.equal(Object.keys(BITMAPS).length, 26);
+  assert.equal(Object.keys(AMBICASE).length, 26);
   for (const letter of LETTERS) {
-    assert.equal(BITMAPS[letter].length, 7);
-    assert.ok(BITMAPS[letter].every(row => /^[01]{5}$/.test(row)));
+    const glyph = ambicaseGlyph(letter);
+    assert.ok(glyph.width > 0 && glyph.height > 0);
+    for (const cells of Object.values(glyph.rows)) for (const [column, x, y, width, height] of cells) {
+      assert.ok(Number.isInteger(column) && column >= 0 && column <= 30);
+      assert.ok([x, y, width, height].every(Number.isFinite));
+      assert.ok(width > 0 && height > 0);
+    }
     assert.ok(pixelIds(letter).length > 10);
     for (const path of SKELETONS[letter]) {
       assert.ok(path.length >= 2);
       for (let i = 1; i < path.length; i++) assert.notDeepEqual(path[i], path[i - 1], `${letter} must not contain a zero-length stem`);
     }
   }
+});
+
+test('Ambicase aliases, proportional metrics, dots and descenders preserve the source anatomy', () => {
+  for (const letter of LETTERS) assert.equal(ambicaseGlyph(letter.toLowerCase()), ambicaseGlyph(letter));
+  assert.equal(AMBICASE.M.width, 905); assert.equal(AMBICASE.I.width, 338);
+  assert.ok(AMBICASE.W.width > AMBICASE.J.width * 2);
+  for (const letter of ['I', 'J']) {
+    assert.equal(AMBICASE[letter].bounds.y2, 817);
+    assert.ok(Object.keys(AMBICASE[letter].rows).some(row => Number(row) < 5));
+    assert.ok(!AMBICASE[letter].rows['5']);
+  }
+  for (const letter of ['G', 'J', 'P', 'Q', 'Y']) {
+    assert.ok(AMBICASE[letter].bounds.y1 < -100);
+    assert.ok(Object.keys(AMBICASE[letter].rows).some(row => Number(row) > 28));
+  }
+});
+
+test('word layout uses actual glyph advances at the chosen scale and shared spacing', () => {
+  const style = { glyphWidth: (letter: string, state: { params: Record<string, unknown> }) => ambicaseWidth(letter, Number(state.params.scale)) };
+  const state = { params: { scale: .95, spacing: 14 }, edits: {} };
+  const layout = wordLayout(style, state, 'IMWI');
+  assert.ok(layout.glyphs[1].width > layout.glyphs[0].width * 2);
+  layout.glyphs.slice(1).forEach((glyph, index) => assert.equal(glyph.x, layout.glyphs[index].x + layout.glyphs[index].width + 14));
+  assert.equal(layout.width, 112 + layout.glyphs.reduce((sum, glyph) => sum + glyph.width, 0) + 42);
+  assert.deepEqual(wordLayout(style, state, 'imwi'), layout);
+  assert.equal(wordLayout({}, state, 'AB').width, 112 + 240 + 14);
 });
 
 const fixture: AlphabetStyle = {
@@ -67,7 +100,7 @@ test('import boundary clamps numbers and rejects invalid values and unknown keys
 test('persistence recovers invalid JSON, ignores incompatible versions and preserves valid edits', () => {
   assert.equal(initialState([fixture], '{broken').activeStyle, 'fixture');
   assert.equal(initialState([fixture], JSON.stringify({ version: 99, styles: { fixture: { params: { size: 1.5 } } } })).styles.fixture.params.size, 1);
-  const restored = initialState([fixture], JSON.stringify({ version: 1, activeStyle: 'missing', styles: { fixture: { params: { size: 1.3 }, edits: { 'A:0:1': 1.5, 'A:7:9': 1, 'B:2:2': 9 } } } }));
+  const restored = initialState([fixture], JSON.stringify({ version: 1, activeStyle: 'missing', styles: { fixture: { params: { size: 1.3 }, edits: { 'A:0:1': 1.5, 'A:32:9': 1, 'B:2:2': 9 } } } }));
   assert.equal(restored.activeStyle, 'fixture');
   assert.equal(restored.styles.fixture.params.size, 1.3);
   assert.deepEqual(restored.styles.fixture.edits, { 'A:0:1': 1.5 });
@@ -83,7 +116,7 @@ test('legacy word IDs migrate only for the active word, and stale words are remo
 
 import { History } from '../src/history.ts';
 import { parseConfiguration, configurationJSON, shareURL } from '../src/configuration.ts';
-import { pruneWordEdits } from '../src/utils/composition.ts';
+import { pruneWordEdits, validPixelId } from '../src/utils/composition.ts';
 
 test('bounded history coalesces gestures, detaches snapshots and invalidates redo branches', () => {
   const history = new History({ value: 0 }, 2);
@@ -109,6 +142,16 @@ test('configuration roundtrip, version 1 import and helpful validation errors', 
   for (const input of ['null', '{', JSON.stringify({ version: 99 }), JSON.stringify({ ...legacy, parameters: { size: 8 } }), JSON.stringify({ ...legacy, pixelPositions: { 'L:0:0': { x: '1', y: 0 } } })]) assert.throws(() => parseConfiguration(input, [fixture]));
   const url = new URL(shareURL(state, 'https://example.test/'));
   assert.deepEqual(parseConfiguration(decodeURIComponent(url.hash.slice(8)), [fixture]), state);
+});
+
+test('high-resolution module IDs survive JSON roundtrip and invalid grid addresses are rejected', () => {
+  const state = initialState([fixture], null);
+  state.word = 'MM'; state.wordMode = true;
+  state.styles.fixture.edits = { 'M:16:25': 1.4, 'w@1:M:16:25': 1.7 };
+  state.styles.fixture.positions = { 'M:16:25': { x: -3, y: 8 }, 'w@1:M:16:25': { x: 4, y: -9 } };
+  assert.deepEqual(parseConfiguration(configurationJSON(state), [fixture]), state);
+  for (const letter of LETTERS) assert.ok(pixelIds(letter).every(validPixelId));
+  for (const id of ['M:32:25', 'M:16:31', 'w@16:M:16:25', 'M:-1:0']) assert.equal(validPixelId(id), false);
 });
 
 

@@ -8,7 +8,7 @@ export type Control = (RangeControl
 export type PixelEdits = Record<string, number>;
 export type StyleState = { params: Parameters; edits: PixelEdits; positions?: Record<string, { x: number; y: number }> };
 export type Scope = 'selection' | 'letter' | 'alphabet';
-export type RenderContext = { letter: string; instance?: string; state: StyleState; selected: ReadonlySet<string>; interactive: boolean };
+export type RenderContext = { letter: string; instance?: string; layout?: 'word'; state: StyleState; selected: ReadonlySet<string>; interactive: boolean };
 export interface AlphabetStyle {
   id: string;
   name: string;
@@ -18,6 +18,8 @@ export interface AlphabetStyle {
   defaults: Parameters;
   controls: Control[];
   editablePixels?: boolean;
+  glyphWidth?: (letter: string, state: StyleState) => number;
+  specimenWidth?: number;
   renderGlyph(context: RenderContext): SVGSVGElement;
   randomize?: (random: () => number) => Partial<Parameters>;
 }

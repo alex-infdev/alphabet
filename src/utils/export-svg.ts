@@ -28,7 +28,7 @@ export function exportSvg(style: AlphabetStyle, state: StyleState, options: SvgE
   const title = svgElement('title');
   title.textContent = `${style.name} / ${letters.join('')}`;
   const description = svgElement('desc');
-  description.textContent = 'Alphabet Lab. Still editable vector artwork. Botanical ASCII marks are outlined paths; Soft Pixel uses individual tile shapes. No fonts required.';
+  description.textContent = 'Alphabet Lab. Still editable vector artwork with native glyph geometry. No fonts required.';
   const metadata = svgElement('metadata');
   metadata.textContent = JSON.stringify({ version: 2, style: style.id, letters, word: options.word, parameters: state.params, pixelEdits: state.edits, pixelPositions: state.positions });
   svg.append(title, description, metadata);

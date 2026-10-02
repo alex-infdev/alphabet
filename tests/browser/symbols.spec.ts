@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { SYMBOLS, DIGITS, VISIBLE_CHARACTERS } from '../../src/styles/characters';
 test.setTimeout(90_000);
 
-test('both styles render every symbol as native artwork with deterministic botanical growth and export parity', async ({ page }) => {
+test('all styles render every symbol as native artwork with deterministic botanical growth and export parity', async ({ page }) => {
   await page.goto('/');
   const results = await page.evaluate(async () => {
     // @ts-expect-error Vite development module.
@@ -31,7 +31,7 @@ test('both styles render every symbol as native artwork with deterministic botan
         alphabetCount: [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].filter(char => render(char).querySelector('text,rect,path')).length };
     });
   });
-  expect(results).toHaveLength(2);
+  expect(results).toHaveLength(3);
   for (const result of results) {
     expect(result.glyphs.map((glyph: any) => glyph.char)).toEqual([...SYMBOLS, ...DIGITS]);
     expect(result.spaceShapes).toBe(0); expect(result.spaceWidth).toBeGreaterThan(0);
@@ -44,9 +44,9 @@ test('both styles render every symbol as native artwork with deterministic botan
   }
 });
 
-test('gallery sections, mixed text, spaces, and lowercase normalization work in both styles', async ({ page }) => {
+test('gallery sections, mixed text, spaces, and lowercase normalization work in all styles', async ({ page }) => {
   await page.goto('/');
-  for (const index of [0, 1]) {
+  for (const index of [0, 1, 2]) {
     await page.locator(`[data-style="${index}"]`).click();
     await expect(page.locator('.glyph-cell')).toHaveCount(VISIBLE_CHARACTERS.length);
     await expect(page.locator('.glyph-cell[data-section="symbols"]')).toHaveCount(SYMBOLS.length);
@@ -94,9 +94,9 @@ test('quote, colon, at and backslash modules support focus, scoped editing, pers
   await expect(page.locator('#word-input')).toHaveValue(':@"\\€');
 });
 
-test('mixed word exports in both styles contain native geometry and invisible spaces', async ({ page }) => {
+test('mixed word exports in all styles contain native geometry and invisible spaces', async ({ page }) => {
   await page.goto('/');
-  for (const index of [0, 1]) {
+  for (const index of [0, 1, 2]) {
     await page.locator(`[data-style="${index}"]`).click();
     await page.locator('[data-action="word"]').click();
     const text = 'A+B $€£ @&% ? {} * " \\ 50';

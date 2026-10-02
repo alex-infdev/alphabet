@@ -99,6 +99,14 @@
   font: 11px var(--mono);
   letter-spacing: .06em;
 }
+
+/* Three style names need a second navigation row on narrow screens. */
+@media (max-width: 700px) {
+  .style-nav { flex-wrap: wrap; padding: 12px 0; gap: 10px; }
+  .style-tabs { width: 100%; justify-content: space-between; gap: 8px; }
+  .style-tab { font-size: 10px; gap: 4px; white-space: nowrap; }
+  .nav-tools { margin-left: auto; }
+}
 .alphabet:not(.is-focused):not(.word-canvas) {
   grid-template-rows: none;
   align-content: start;

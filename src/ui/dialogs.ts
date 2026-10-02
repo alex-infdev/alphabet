@@ -71,7 +71,7 @@ export function createDialogs(options: {
       <label class="control control-toggle"><span>Transparent background</span><input id="export-transparent" type="checkbox" checked></label>
       <p id="export-error" role="alert" hidden></p>
       <button class="regenerate-button" data-action="download-svg">Download SVG ↓</button>
-      <p class="panel-footnote">One group per glyph. Pixel tiles and Botanical marks remain editable vector shapes. No fonts required.</p>`);
+      <p class="panel-footnote">One group per glyph. All styles export as vector shapes. No fonts required.</p>`);
     el<HTMLSelectElement>('#export-ink').value = options.theme() === 'dark' ? '#f3f3f0' : '#292b26';
     el('#export-scope').addEventListener('change', () => {
       const custom = el<HTMLSelectElement>('#export-scope').value === 'custom';

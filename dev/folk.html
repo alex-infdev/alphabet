@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Folk Ornamental / design specimen</title>
+<style>
+body { margin:28px; background:#faf9f3; color:#242620; font:13px system-ui; }
+h1 { font-size:24px; font-weight:500; } h2 { font-size:14px; font-weight:500; margin-top:30px; }
+header { position:sticky; top:0; background:#faf9f3; padding:10px 0; z-index:1; display:flex; align-items:center; gap:22px; }
+label { display:flex; align-items:center; gap:8px; } input[type=number] { width:90px; }
+.alphabet { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:12px; }
+article { border:1px solid #deded1; padding:8px; text-align:center; }
+article svg { width:100%; height:185px; display:block; }
+.word { border-bottom:1px solid #deded1; }
+.word svg { display:block; width:100%; height:205px; }
+.matrix { display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; }
+.matrix .word svg { height:190px; }
+.symbols { display:grid; grid-template-columns:repeat(14,1fr); }
+.symbols article svg { height:120px; }
+</style>
+<h1>Folk Ornamental / structural alphabet & anchored ornament</h1>
+<header>
+ <label>Ornament <input id="ornament" type="range" min="0" max="100" value="40"><output id="ornament-value">40</output></label>
+ <label>Pixelation <input id="pixelation" type="range" min="0" max="100" value="0"><output id="pixelation-value">0</output></label>
+ <label>Seed <input id="seed" type="number" value="2048" min="0" max="999999"></label>
+</header>
+<h2>Live words</h2><div id="words"></div>
+<h2>A–Z / current settings</h2><div id="alphabet" class="alphabet"></div>
+<h2>CULTURE / fixed acceptance states</h2><div id="matrix" class="matrix"></div>
+<h2>Symbols and numerals / current settings</h2><div id="symbols" class="symbols"></div>
+<script type="module">
+import { folkOrnamental as style } from '../src/styles/folk-ornamental.ts';
+import { LETTERS,SYMBOLS,DIGITS } from '../src/styles/characters.ts';
+import { exportSvg } from '../src/utils/export-svg.ts';
+const word = (text,params,label) => {
+ const div=document.createElement('div');div.className='word';
+ const heading=document.createElement('p');heading.textContent=label??text;div.append(heading);
+ const source=exportSvg(style,{params,edits:{}},{letters:[],word:text,ink:'#242620'});
+ div.append(document.importNode(new DOMParser().parseFromString(source,'image/svg+xml').documentElement,true));return div;
+};
+function render() {
+ const params={...style.defaults,ornament:+ornament.value,pixelation:+pixelation.value,seed:+seed.value};
+ document.querySelector('#ornament-value').textContent=ornament.value;document.querySelector('#pixelation-value').textContent=pixelation.value;
+ document.querySelector('#words').replaceChildren(...['CULTURE','ORNAMENT','FOLK','PIXEL'].map(text=>word(text,params)));
+ for(const [id,chars] of [['alphabet',LETTERS],['symbols',[...SYMBOLS,...DIGITS]]]) {
+  const nodes=chars.map(letter=>{const article=document.createElement('article');article.dataset.glyph=letter;article.textContent=letter;article.append(style.renderGlyph({letter,state:{params,edits:{}},selected:new Set(),interactive:false}));return article;});
+  document.getElementById(id).replaceChildren(...nodes);
+ }
+ document.querySelector('#matrix').replaceChildren(...[[0,0],[40,0],[40,60],[80,0],[80,80],[100,100]].map(([ornament,pixelation])=>word('CULTURE',{...params,ornament,pixelation},`ORNAMENT ${ornament} / PIXELATION ${pixelation}`)));
+}
+for(const id of ['ornament','pixelation','seed'])document.getElementById(id).addEventListener('input',render);
+render();
+</script>

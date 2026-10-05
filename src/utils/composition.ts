@@ -10,8 +10,9 @@ export const letterOf = (instance: string): string => characterFromKey(instance.
 export const pixelScale = (state: StyleState, id: string): number => state.edits[id] ?? state.edits[basePixelId(id)] ?? 1;
 export const pixelPosition = (state: StyleState, id: string): { x: number; y: number } => state.positions?.[id] ?? state.positions?.[basePixelId(id)] ?? { x: 0, y: 0 };
 export const validPixelId = (id: string): boolean => {
-  const match = /^(?:w@(0|[1-9][0-9]*):)?([A-Z]|u[0-9a-f]{4}):([0-9]|[12][0-9]|3[01]):([0-9]|[12][0-9]|30)$/.exec(id);
+  const match = /^(?:w@(0|[1-9][0-9]*):)?([A-Z]|u[0-9a-f]{4}):([0-9]|[12][0-9]|3[01]):([0-9]|[12][0-9]|30|m(?:0|[1-9][0-9]{0,3}))$/.exec(id);
   if (!match || (match[1] !== undefined && Number(match[1]) >= MAX_TEXT_LENGTH)) return false;
+  if (match[4].startsWith('m') && match[3] !== '0') return false;
   const char = characterFromKey(match[2]);
   return char !== ' ' && isSupported(char) && glyphKey(char) === match[2];
 };

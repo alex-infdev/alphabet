@@ -184,6 +184,10 @@ When you’re editing a single letter or a word, you can also nudge focused pixe
 
 Offsets are limited to ±40 glyph units so pixels can’t disappear endlessly into space.
 
+In a focused Soft Pixel glyph, turn **Grid** on to see the authored 32-font-unit chart (4.16 glyph units per cell). Hover an empty cell for a placement outline, then click or tap to add a module. The grid follows the glyph's SVG transform and proportional edit area; it stays out of the gallery, word canvas, and exported artwork. Added modules use the current pixel size, gap, radius, and ink. They stay aligned to chart cells when dragged or nudged, while existing modules retain their free movement and optional 5-unit snap. Manual modules stay precisely placed when jitter is changed.
+
+Use **Delete selected**, **Delete**, or **Backspace** to remove selected modules. **Reset Glyph** restores the current authored glyph, including removed modules, and clears its additions, size overrides, and moved positions. Other glyphs and form settings are preserved. Additions and removals are stored separately from the built-in alphabet, apply to all occurrences of the same glyph (including lowercase aliases), and survive JSON import/export, browser saves, SVG metadata, and undo/redo. Existing per-occurrence size and position overrides in word mode remain supported.
+
 If things get out of hand, **Restore pixel positions** puts the active scope back onto the original grid.
 
 Word editing has its own small inheritance system.

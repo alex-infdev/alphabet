@@ -30,7 +30,7 @@ export function exportSvg(style: AlphabetStyle, state: StyleState, options: SvgE
   const description = svgElement('desc');
   description.textContent = 'Alphabet Lab. Still editable vector artwork with native glyph geometry. No fonts required.';
   const metadata = svgElement('metadata');
-  metadata.textContent = JSON.stringify({ version: 2, style: style.id, letters, word: options.word, parameters: state.params, pixelEdits: state.edits, pixelPositions: state.positions });
+  metadata.textContent = JSON.stringify({ version: 2, style: style.id, letters, word: options.word, parameters: state.params, pixelEdits: state.edits, pixelPositions: state.positions, addedPixels: state.addedPixels, removedPixels: state.removedPixels });
   svg.append(title, description, metadata);
   if (options.background) svg.append(svgElement('rect', { width, height, fill: options.background }));
 

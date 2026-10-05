@@ -13,6 +13,9 @@ export function enableKeyboard(options: {
     }
     if (editing) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault(); options.action('delete-pixels'); return;
+    }
     const pixel = target.closest<SVGElement>('[data-pixel]');
     if (pixel && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
       event.preventDefault(); options.nudge(pixel.dataset.pixel!, event.key, event.shiftKey ? 5 : 1); return;

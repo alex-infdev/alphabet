@@ -44,7 +44,9 @@ export function createControls(controls: Control[], params: Parameters, onChange
       if (control.type === 'toggle') {
         input.type = 'checkbox';
         input.checked = Boolean(params[control.key]);
-        input.addEventListener('change', () => onChange(control.key, input.checked));
+        const status = control.key === 'grid' ? document.createElement('span') : null;
+        if (status) { status.className = 'grid-toggle-state'; status.setAttribute('aria-hidden', 'true'); status.textContent = input.checked ? 'On' : 'Off'; name.append(status); }
+        input.addEventListener('change', () => { if (status) status.textContent = input.checked ? 'On' : 'Off'; onChange(control.key, input.checked); });
       } else {
         input.type = control.type;
         input.min = String(control.min); input.max = String(control.max); input.step = String(control.step);

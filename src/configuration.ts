@@ -2,12 +2,13 @@ import type { AlphabetStyle } from './types';
 import { initialState, type SavedState } from './state.ts';
 import { cleanWord, validPixelId } from './utils/composition.ts';
 import { MAX_TEXT_LENGTH } from './styles/characters.ts';
+import { isManualPixel, validAddedCell } from './utils/soft-pixel-model.ts';
 export function parseConfiguration(text: string, styles: AlphabetStyle[]): SavedState {
   if (text.length > 2_000_000) throw new Error('Configuration is too large (maximum 2 MB).');
   let value;
   try { value = JSON.parse(text); } catch { throw new Error('Invalid JSON. Check commas, quotes, and brackets.'); }
   if (!value || ![1, 2].includes(value.version)) throw new Error('Supported configuration versions are 1 and 2.');
-  if (value.style) value = { version: value.version, activeStyle: value.style, word: value.word ?? 'GROW', wordMode: Boolean(value.word), styles: { [value.style]: { params: value.parameters, edits: value.pixelEdits, positions: value.pixelPositions } } };
+  if (value.style) value = { version: value.version, activeStyle: value.style, word: value.word ?? 'GROW', wordMode: Boolean(value.word), styles: { [value.style]: { params: value.parameters, edits: value.pixelEdits, positions: value.pixelPositions, addedPixels: value.addedPixels, removedPixels: value.removedPixels } } };
   if (!styles.some(style => style.id === value.activeStyle)) throw new Error('Unknown or missing active style.');
   if (!value.styles || typeof value.styles !== 'object' || Array.isArray(value.styles)) throw new Error('Expected a styles object.');
   if (value.word !== undefined && (typeof value.word !== 'string' || !value.word.length || cleanWord(value.word) !== value.word)) throw new Error(`Text must contain 1-${MAX_TEXT_LENGTH} supported uppercase letters, symbols, or spaces.`);
@@ -32,6 +33,13 @@ export function parseConfiguration(text: string, styles: AlphabetStyle[]): Saved
         const normalized = value.version === 1 ? key.replace(/^[A-Z]+@/, 'w@') : key;
         if (!validPixelId(normalized)) throw new Error(`Invalid pixel ID: ${key}.`);
         if (field === 'edits' ? typeof val !== 'number' || !Number.isFinite(val) || val < .4 || val > 1.8 : !val || typeof val.x !== 'number' || typeof val.y !== 'number' || !Number.isFinite(val.x) || !Number.isFinite(val.y) || Math.abs(val.x) > 40 || Math.abs(val.y) > 40) throw new Error(`Invalid ${field} for ${key}.`);
+      }
+    }
+    for (const field of ['addedPixels', 'removedPixels']) {
+      const entries = data[field]; if (entries === undefined) continue;
+      if (id !== 'soft-pixel' || !entries || typeof entries !== 'object' || Array.isArray(entries)) throw new Error(`${field}: expected a Soft Pixel object.`);
+      for (const [key, cell] of Object.entries(entries)) {
+        if (!validPixelId(key) || key.includes('@') || (field === 'addedPixels' ? !isManualPixel(key) || !validAddedCell(cell) : isManualPixel(key) || cell !== true)) throw new Error(`Invalid ${field} for ${key}.`);
       }
     }
   }

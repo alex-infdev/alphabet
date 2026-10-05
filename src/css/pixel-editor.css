@@ -3,6 +3,28 @@
   transition:fill .12s
 }
 
+.pixel-grid {
+  fill:none;
+  stroke:var(--muted);
+  stroke-width:.5;
+  opacity:.35;
+  vector-effect:non-scaling-stroke;
+  pointer-events:none
+}
+
+.pixel-grid-preview {
+  fill:var(--accent);
+  fill-opacity:.1;
+  stroke:var(--accent);
+  stroke-width:.7;
+  vector-effect:non-scaling-stroke;
+  pointer-events:none
+}
+
+.has-pixel-grid { cursor:crosshair; overflow:visible }
+
+.grid-toggle-state { margin-left:8px; color:var(--muted); font:10px var(--mono) }
+
 .pixel {
   cursor:pointer;
   outline:none

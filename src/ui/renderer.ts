@@ -24,6 +24,8 @@ export function renderAlphabet(container: HTMLElement, style: AlphabetStyle, sta
     const key = JSON.stringify([style.id, Boolean(focused), geometry,
       Object.entries(state.edits).filter(([id]) => id.startsWith(prefix)),
       Object.entries(state.positions ?? {}).filter(([id]) => id.startsWith(prefix)),
+      Object.entries(state.addedPixels ?? {}).filter(([id]) => id.startsWith(prefix)),
+      Object.keys(state.removedPixels ?? {}).filter(id => id.startsWith(prefix)),
       [...selected].filter(id => id.startsWith(prefix))]);
     const cached = previous.get(letter);
     if (cached?.key === key) { fragment.append(cached.cell); next.set(letter, cached); continue; }

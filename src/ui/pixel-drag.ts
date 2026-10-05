@@ -42,8 +42,8 @@ export function enablePixelDragging(container: HTMLElement, options: {
     drag.state.positions ??= {};
     for (const target of drag.targets) {
       const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(target.inverse);
-      const x = constrainPixelOffset(drag.state, target.offset.x + point.x - target.start.x);
-      const y = constrainPixelOffset(drag.state, target.offset.y + point.y - target.start.y);
+      const x = constrainPixelOffset(drag.state, target.offset.x + point.x - target.start.x, target.id);
+      const y = constrainPixelOffset(drag.state, target.offset.y + point.y - target.start.y, target.id);
       drag.state.positions[target.id] = { x, y };
       target.element.setAttribute('transform', `translate(${x} ${y})`);
     }

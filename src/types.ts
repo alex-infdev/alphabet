@@ -6,7 +6,8 @@ export type Control = (RangeControl
   | { type: 'select'; key: string; label: string; options: { value: string; label: string }[] }
   | { type: 'action'; key: string; label: string }) & { group?: 'layout' | 'wind' };
 export type PixelEdits = Record<string, number>;
-export type StyleState = { params: Parameters; edits: PixelEdits; positions?: Record<string, { x: number; y: number }> };
+export type AddedPixel = { row: number; column: number };
+export type StyleState = { params: Parameters; edits: PixelEdits; positions?: Record<string, { x: number; y: number }>; addedPixels?: Record<string, AddedPixel>; removedPixels?: Record<string, true> };
 export type Scope = 'selection' | 'letter' | 'alphabet';
 export type RenderContext = { letter: string; instance?: string; layout?: 'word'; state: StyleState; selected: ReadonlySet<string>; interactive: boolean };
 export interface AlphabetStyle {
@@ -25,7 +26,7 @@ export interface AlphabetStyle {
 }
 
 export type LayoutParameters = { seed: number; spacing: number; rowSpacing: number; scale: number; labels: boolean };
-export type SoftPixelParameters = LayoutParameters & { snapToGrid: boolean; pixelSize: number; gap: number; radius: number; jitter: number; rotation: number };
+export type SoftPixelParameters = LayoutParameters & { grid: boolean; snapToGrid: boolean; pixelSize: number; gap: number; radius: number; jitter: number; rotation: number };
 export type BotanicalParameters = LayoutParameters & { characters: string; density: number; growth: number; branching: number; flowers: number; distortion: number; lineHeight: number; windEnabled: boolean; windIntensity: number; windDirection: string; windSpeed: number };
 type KeysOfType<P, V> = { [K in keyof P]: P[K] extends V ? K : never }[keyof P] & string;
 export type TypedControl<P> = Control extends infer C ? C extends Control ? Omit<C, 'key'> & { key: C['type'] extends 'action' ? string : C['type'] extends 'range' | 'number' ? KeysOfType<P, number> : C['type'] extends 'toggle' ? KeysOfType<P, boolean> : KeysOfType<P, string> } : never : never;

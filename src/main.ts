@@ -12,6 +12,8 @@ import { createControls } from './ui/controls';
 import { renderAlphabet, invalidateAlphabet } from './ui/renderer';
 import { renderWord } from './ui/word-renderer';
 import { enablePixelDragging } from './ui/pixel-drag';
+import { enableGridEditing } from './ui/pixel-grid-editing';
+import { softPixelModules, removePixels, resetGlyph } from './utils/soft-pixel-model';
 import { cleanWord, instanceOf, letterOf, pixelScale, wordInstances } from './utils/composition';
 import { createDialogs } from './ui/dialogs';
 import { History } from './history';
@@ -95,7 +97,7 @@ app.innerHTML = `
       <aside id="control-panel" class="control-panel" aria-label="Style controls">
         <div class="panel-heading"><h2>Controls</h2></div>
         <p class="panel-description"></p>
-        <section class="pixel-editor" hidden aria-label="Pixel editing"><div class="section-label">EDITING SCOPE <span class="selected-count"></span></div><label class="scope-label">Apply scale to<select id="scope"><option value="selection">Selected pixels</option><option value="letter">Current letter</option><option value="alphabet">Entire alphabet</option></select></label><label class="scope-label letter-picker">Current letter<select id="current-letter">${LETTERS.map(letter => `<option>${letter}</option>`).join('')}</select></label><div id="selection-scale"></div><p class="selection-help" role="status"></p><p id="pixel-instructions" class="panel-footnote">Tab enters the pixel canvas. Alt + arrows moves focus; Enter or Space selects. Shift adds to selection. Arrow keys nudge; Shift moves 5 steps. With Snap to grid, each step is 5 units.</p><button class="text-button clear-selection" data-action="deselect">Clear selection</button></section>
+        <section class="pixel-editor" hidden aria-label="Pixel editing"><div class="section-label">EDITING SCOPE <span class="selected-count"></span></div><label class="scope-label">Apply scale to<select id="scope"><option value="selection">Selected pixels</option><option value="letter">Current letter</option><option value="alphabet">Entire alphabet</option></select></label><label class="scope-label letter-picker">Current letter<select id="current-letter">${LETTERS.map(letter => `<option>${letter}</option>`).join('')}</select></label><div id="selection-scale"></div><p class="selection-help" role="status"></p><p id="pixel-instructions" class="panel-footnote">Tab enters the pixel canvas. Alt + arrows moves focus; Enter or Space selects. Shift adds to selection. Arrow keys nudge; Shift moves 5 steps. With Snap to grid, each step is 5 units. Added modules move by chart cells. Grid on: click an empty cell to add. Delete / Backspace removes selected modules.</p><button class="text-button clear-selection" data-action="deselect">Clear selection</button><div class="secondary-actions"><button class="text-button" data-action="delete-pixels" disabled>Delete selected</button><button class="text-button" data-action="reset-glyph" disabled>Reset Glyph</button></div></section>
         <div class="section-label parameters-heading">FORM & CHARACTER <span>↕</span></div>
         <button class="text-button reset-positions" data-action="reset-positions" hidden>Restore pixel positions</button>
         <div id="parameters"></div>
@@ -143,7 +145,7 @@ function requestDraw(): void {
   persist();
 }
 function targets(): string[] {
-  const ids = (instance: string) => pixelIds(letterOf(instance)).map(id => `${instance}:${id.split(':').slice(-2).join(':')}`);
+  const ids = (instance: string) => (style().id === 'soft-pixel' ? softPixelModules(letterOf(instance), state(), instance).map(module => module.id) : pixelIds(letterOf(instance)).map(id => `${instance}:${id.split(':').slice(-2).join(':')}`));
   if (scope === 'alphabet') return (saved.wordMode ? wordInstances(saved.word) : VISIBLE_CHARACTERS.map(glyphKey)).flatMap(ids);
   if (scope === 'letter') return ids(currentLetter);
   return [...selection()];
@@ -169,6 +171,8 @@ function updateSelectionUI(): void {
   el<HTMLInputElement>('#selection-scale input').disabled = !ids.length;
   el<HTMLButtonElement>('.clear-selection').disabled = !selection().size;
   el<HTMLButtonElement>('.reset-positions').disabled = !ids.length;
+  el<HTMLButtonElement>('[data-action="delete-pixels"]').disabled = !selection().size;
+  el<HTMLButtonElement>('[data-action="reset-glyph"]').disabled = !focused && !saved.wordMode;
 }
 function updateView(): void {
   const item = style();
@@ -268,6 +272,8 @@ function action(name: string): void {
     case 'export': openExport(); break;
     case 'download-svg': saveSvg(); break;
     case 'word': saved.wordMode = true; focused = null; currentLetter = wordInstances(saved.word)[0]; selection().clear(); updateView(); el<HTMLInputElement>('#word-input').focus(); break;
+    case 'delete-pixels': if (style().id === 'soft-pixel' && selection().size) { removePixels(state(), selection()); selection().clear(); updateSelectionUI(); requestDraw(); notify('Selected modules removed'); } break;
+    case 'reset-glyph': if (style().id === 'soft-pixel' && (focused || saved.wordMode)) { resetGlyph(state(), focused ?? letterOf(currentLetter)); selection().clear(); updateSelectionUI(); requestDraw(); notify('Original glyph restored'); } break;
     case 'reset-positions': state().positions ??= {}; for (const id of targets()) state().positions![id] = { x: 0, y: 0 }; requestDraw(); notify('Pixel positions restored for the active scope'); break;
     case 'back': { const letter = focused; focused = null; saved.wordMode = false; currentLetter = 'A'; selection().clear(); updateView(); if (letter) [...app.querySelectorAll<HTMLButtonElement>('.glyph-open')].find(button => button.dataset.focus === letter)?.focus({ preventScroll: true }); else el<HTMLButtonElement>('[data-action="word"]').focus({ preventScroll: true }); break; }
     case 'deselect': clearSelection(); break;
@@ -306,6 +312,11 @@ el('#word-input').addEventListener('blur', event => {
   input.setCustomValidity('');
 });
 enablePixelDragging(el('#alphabet'), { state, selected: selection, select: selectPixel, changed: () => { invalidateAlphabet(el('#alphabet')); persist(); } });
+enableGridEditing(el('#alphabet'), { state, added(id) {
+  history.end(); historyGroup = '';
+  draw(); selectPixel(id, false); persist();
+  [...el('#alphabet').querySelectorAll<SVGElement>('[data-pixel]')].find(pixel => pixel.dataset.pixel === id)?.focus({ preventScroll: true });
+} });
 app.addEventListener('input', event => {
   const input = event.target as HTMLInputElement;
   historyGroup = input.id || input.name || input.closest('label')?.textContent || 'input';

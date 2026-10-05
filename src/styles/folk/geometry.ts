@@ -20,7 +20,8 @@ function parse(d: string): Command[] {
 }
 const fmt = (v: number) => Number(v.toFixed(3));
 const snap = (v: number, grid: number) => fmt(Math.round(v/grid)*grid);
-export const gridFor = (pixelation: number): number => pixelation <= 25 ? pixelation / 25 * .7 : 1 + (pixelation-25)/75*5;
+// The coarsest body pitch matches Ambicase's 32-unit construction tiles at .13.
+export const gridFor = (pixelation: number): number => pixelation <= 25 ? pixelation / 25 * .7 : 1 + (pixelation-25)/75*3.16;
 
 /** Evaluate the actual Bézier geometry, not pixels or an SVG screenshot. */
 export function contours(d: string, tolerance = .5): { points: Point[]; closed: boolean }[] {
@@ -54,14 +55,22 @@ export function interpret(shape: Shape, pixelation: number): Shape {
   if(pixelation<=0) return shape;
   const grid=gridFor(pixelation);
   if(pixelation<=25) return {...shape,d:parse(shape.d).map(({op,values})=>op+values.map(v=>snap(v,grid)).join(' ')).join('')};
-  const loops=contours(shape.d,grid*.25);
+  const loops=contours(shape.coarse ?? shape.d,grid*.25);
   if(shape.motif==='dot' || shape.motif==='rosette') {
     const points=loops[0].points;
     const minX=Math.min(...points.map(p=>p[0])),maxX=Math.max(...points.map(p=>p[0]));
     const minY=Math.min(...points.map(p=>p[1])),maxY=Math.max(...points.map(p=>p[1]));
     const cx=snap((minX+maxX)/2-grid/2,grid),cy=snap((minY+maxY)/2-grid/2,grid);
     const tile=(x:number,y:number)=>`M${fmt(x)} ${fmt(y)}L${fmt(x+grid)} ${fmt(y)}L${fmt(x+grid)} ${fmt(y+grid)}L${fmt(x)} ${fmt(y+grid)}Z`;
-    if(shape.motif==='rosette' && maxX-minX>4) return {...shape,d:tile(cx,cy)+tile(cx-grid,cy)+tile(cx+grid,cy)+tile(cx,cy-grid)+tile(cx,cy+grid)};
+    if(shape.motif==='rosette' && maxX-minX>4) {
+      // Keep the blossom's optical size throughout the slider. Five broad
+      // square petals are built from whole grid multiples, rather than
+      // shrinking every flower to five single cells at low pixelation.
+      const petal=grid*Math.max(1,Math.round((maxX-minX)/(3*grid)));
+      const x=snap((minX+maxX)/2-petal/2,grid),y=snap((minY+maxY)/2-petal/2,grid);
+      const block=(x:number,y:number)=>`M${fmt(x)} ${fmt(y)}L${fmt(x+petal)} ${fmt(y)}L${fmt(x+petal)} ${fmt(y+petal)}L${fmt(x)} ${fmt(y+petal)}Z`;
+      return {...shape,d:block(x,y)+block(x-petal,y)+block(x+petal,y)+block(x,y-petal)+block(x,y+petal)};
+    }
     if(Math.min(maxX-minX,maxY-minY)<grid*1.6)return {...shape,d:tile(cx,cy)};
   }
   if(shape.stroke) {
@@ -106,9 +115,10 @@ export function interpret(shape: Shape, pixelation: number): Shape {
  * components share one page-aligned grid, even on rotated vine anchors. */
 export function transform(shape: Shape, x: number, y: number, angle=0, scale=1): Shape {
   const r=angle*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
-  return {...shape,stroke:shape.stroke===undefined?undefined:shape.stroke*scale,d:parse(shape.d).map(({op,values})=>{
+  const path=(d:string)=>parse(d).map(({op,values})=>{
     const coords=[];
     for(let i=0;i<values.length;i+=2)coords.push(fmt(x+scale*(values[i]*c-values[i+1]*s)),fmt(y+scale*(values[i]*s+values[i+1]*c)));
     return op+coords.join(' ');
-  }).join('')};
+  }).join('');
+  return {...shape,stroke:shape.stroke===undefined?undefined:shape.stroke*scale,d:path(shape.d),...(shape.coarse?{coarse:path(shape.coarse)}:{})};
 }

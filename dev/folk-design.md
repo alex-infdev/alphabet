@@ -1,42 +1,37 @@
 # Folk Ornamental
 
-Original display geometry, anchored ornament, and vector grid interpretation are separate layers. No font, traced reference, canvas, raster sampling, or remote asset is used.
+The current Folk alphabet uses the supplied Ambicase Modern anatomy with individually composed sprigs, attached blossoms, small carved details, and a geometric stepped treatment. The user's font reference supersedes the earlier independently drawn serif skeletons.
 
-## Design grammar and implementation
+## Source and coordinate model
 
-The CULTURE references establish black vertical masses, extreme contrast, irregular serifs, inward bell terminals, generous counters, low hooks, restrained dots and small flowers, and plants attached to structural joints. The design preserves empty space and uses different ornament arrangements for different letters.
+`src/styles/folk/ambicase-outlines.json` contains native SVG outlines and proportional advances derived from the recorded Ambicase reference. The supplied TTF was SHA-256 verified against `dev/ambicase-reference.json`: `974f5559c060580a146c5e11e1fdfd9446d2c766955a911f469bb3dfbc121ea4`. The source outlines are scaled by .13, positioned on baseline 112, and given eight units of gallery bearing space per side. Word layout uses the source advance plus the existing four-unit word allowance; gallery bearing padding does not inflate tracking. The runtime loads vectors, not the TTF or development reference.
 
-- `src/styles/folk/letters.ts`: 26 individually authored capital skeletons with proportional widths, cap height 24, baseline 112, and intentional overshoots/descenders. Each entry contains its design rationale and named attachment points.
-- `src/styles/folk/symbols.ts`: independent punctuation, currencies, operators, ten numerals, and blank space. Lowercase resolves to the same capital geometry.
-- `src/styles/folk/model.ts`: filled contours, optional hairline strokes, motif hints, and anchors with position, direction, activation stage, and optional knockout.
-- `src/styles/folk/ornament.ts`: bounded seeded choices at authored anchors. Dots begin near 16; flowers and leaf structures around 30; larger plants and curls around 50; additional structures around 70; secondary branches above 84. Eased growth changes scale/length within each stage. There is no free random placement. Pixelation is not an input to composition.
-- `src/styles/folk/geometry.ts`: low settings snap control coordinates. Above 25, sampled mathematical contours become ordered orthogonal grid walks; grid pitch increases to 6 units. Straight edges and implicit closing edges are also subdivided. Hairlines become connected vector cells, small dots retain a cell, and rosettes become compact crosses. Counters use even-odd fill. Tiny carved motifs are constrained separately so they cannot remove a whole stem. Native SVG crisp-edge rendering prevents seams between adjacent cells.
-- `src/styles/folk-ornamental.ts`: style adapter, bounded derived-geometry cache, controls, metrics, SVG groups, and uniquely identified cutout masks. Changing a seed affects ornament only. Both live layout and export use this renderer.
+To regenerate from the same supplied font:
 
-Registration, word layout, export, persistence, color, focus, history, and configuration import use the existing application architecture. Old saved configurations receive the new style's defaults. Existing style artwork and module editing are unchanged. Ornament is local to each glyph; there is no word-level vine connection in this pass.
+```powershell
+node --experimental-strip-types scripts/build-folk-outlines.mjs 'C:/Users/justf/Downloads/exe/ambicase-modern-regular.ttf'
+```
 
-## Manual glyph review
+The builder rejects a font whose hash differs from the recorded reference. Soft Pixel's authored chart and all Botanical geometry remain unchanged.
 
-The complete A-Z was visually reviewed glyph by glyph at base, ornamented, and coarse states, not accepted from data generation alone.
+## Ornament grammar
 
-| Glyphs | Reviewed anatomy |
-| --- | --- |
-| A, B, C | Offset A crown and low bar; unequal B bowls and backward cap hook; C crescent and inward bell |
-| D, E, F | Inflated D bowl and inner plant; unequal E arms and cupped foot; F canopy and open lower field |
-| G, H, I | Dropped G spur; H low curved bridge; narrow I with notched cap and restrained carved foot |
-| J, K, L | J descending bell; curved K upper arm and kicked leg; L sunk keel and rising beak |
-| M, N, O | M central loop; bowed N diagonal; tall O with asymmetric black mass |
-| P, Q, R | P short descending foot; Q curled tail; open R shoulder and kicked leg |
-| S, T, U | Opposed S bells; T canopy and double hook; heavy/fine U uprights and deep bowl |
-| V, W, X | Wedge construction, unequal W low points, contrasted X diagonals |
-| Y, Z | Y high fork and long hook; Z ribbon diagonal and curved head/foot |
+`letters.ts` composes attachments against the actual Ambicase anatomy: A's swept lower bowl, the I/J dots, M/N's arched shoulders, the low H bridge, and G/P/Q/Y's descenders remain intact. At the default ornament value of 40, each letter gets one primary gesture. Denser settings add a second gesture or a small carved detail. There are no scattered vertical dot columns on A-Z.
 
-The CULTURE matrix uses (Ornament, Pixelation) = (0,0), (40,0), (40,60), (80,0), (80,80), plus (100,100). Review led to tighter spacing, stronger inner plants, revised B/R shoulders and W points, a corrected diagonal grid walk, and reduced coarse cutouts. Punctuation and digits were reviewed in smooth and stepped sheets.
+Sprigs have a substantial stem and a small number of broad paired leaves. B/O/S/V/Z use attached flowers to vary the word rhythm. Narrow I/K/R/T/V/W spaces have individually tuned attachment positions and sizes. Seed variation is bounded to the authored attachments and never changes the source silhouette or width. Density adds leaf pairs and secondary motifs without free placement or long inter-letter branches.
 
-The results retain the same skeleton and attachment locations across treatments. Relative to the source CULTURE composition, these letters remain more upright and the word has less inter-letter interaction. At maximum density and coarseness, M/O/T leaf clusters merge with adjacent masses; these are the first candidates for further optical tuning. Small curls intentionally lose detail on the largest grid. The design is an original display alphabet, not a complete typographic font with kerning and OpenType features.
+Punctuation and numerals retain their independently authored family geometry. Their ornament uses the revised motif vocabulary; currency forms sharing C/S inherit the new base anatomy.
 
-## Review and verification
+## Smooth and stepped treatments
 
-Run the Vite development server and open `/dev/folk.html`. It includes adjustable A-Z, symbols, CULTURE, ORNAMENT, FOLK, PIXEL, and fixed CULTURE comparisons. `node scripts/capture-folk.mjs` regenerates ignored PNG review sheets against port 4173.
+`ornament.ts` supplies smooth almond leaves and separate broad geometric leaf contours. Both treatments start at the same stem attachment and transform together. Flowers have eight broad petals with a small centre in smooth mode and a square-petal treatment at coarse settings. The stepped flower scales in whole grid multiples to retain its optical size through the slider.
 
-Tests cover the full shared repertoire, treatment extremes, deterministic ornament, unchanged skeletons, stable anchors, diagonal stepping, lowercase aliases, proportional layout, SVG parity and mask IDs, old-state loading, persisted controls, and desktop/mobile integration. Existing regression checks retain the original two styles' artwork hashes and module-editing behavior.
+`geometry.ts` keeps the ordered orthogonal contour walk and connected hairline cells. The maximum body grid pitch is now 4.16 glyph units, matching the Soft Pixel chart's 32-font-unit pitch at .13 scale. Motifs, masks and body geometry remain native vectors. Carved flowers use the restrained dot treatment when quantized so a full large flower cannot remove an entire black stem.
+
+## Visual review and verification
+
+Open `/dev/folk.html` for live A-Z, symbols, CULTURE, ORNAMENT, FOLK and PIXEL, plus the fixed treatment matrix. `node scripts/capture-folk.mjs` captures the matrix, A-Z at six density/treatment combinations, symbol sheets, and the desktop/mobile app. These PNGs are ignored QA artifacts.
+
+The redesign was reviewed across A-Z at minimal, default and dense ornament, and in smooth and coarse states. The first review exposed merged I/K/R/T/V/W ornament; their attachments were moved into the actual open fields. The font's original counters, hooked terminals and dotted aliases remain visible. Maximum coarseness intentionally simplifies leaves into bold stepped shapes.
+
+Tests check exact font-source contour correspondence, proportional metrics, retained dots/counters, one primary default gesture, bounded secondary motifs, flower optical size, explicit leaf geometry, attachment stability, deterministic seeds, native SVG/export parity, unique mask IDs, lowercase aliases, persistence, and desktop/mobile behavior. Existing Soft Pixel and Botanical regressions remain part of the complete suite.

@@ -6,6 +6,8 @@ test('Folk registration, aliases, metrics, geometry/export parity and masks',asy
     // @ts-expect-error Vite module
     const {styles}=await import('/src/styles/index.ts');
     // @ts-expect-error Vite module
+    const {FOLK_GLYPHS}=await import('/src/styles/folk-ornamental.ts');
+    // @ts-expect-error Vite module
     const {exportSvg}=await import('/src/utils/export-svg.ts');
     // @ts-expect-error Vite module
     const {wordLayout}=await import('/src/utils/word-layout.ts');
@@ -31,10 +33,14 @@ test('Folk registration, aliases, metrics, geometry/export parity and masks',asy
         nodes:a.querySelectorAll('*').length});
     }
     const old=initialState(styles,JSON.stringify({version:1,activeStyle:'soft-pixel',styles:{},word:'OLD'}));
-    return {ids:styles.map((s:any)=>s.id),rows,migrated:old.activeStyle==='soft-pixel'&&old.styles['folk-ornamental'].params.ornament===40};
+    const defaultState={params:style.defaults,edits:{}};
+    const glyph=FOLK_GLYPHS.M;
+    return {ids:styles.map((s:any)=>s.id),rows,migrated:old.activeStyle==='soft-pixel'&&old.styles['folk-ornamental'].params.ornament===40,
+      fontTracking:style.glyphWidth('M',defaultState)===glyph.advance*style.defaults.scale+4};
   });
   expect(result.ids).toEqual(['botanical','soft-pixel','folk-ornamental']);
   expect(result.migrated).toBe(true);
+  expect(result.fontTracking).toBe(true);
   for(const row of result.rows) {
     for(const key of ['aliases','stableBase','native','uniqueIds','parity','masks','wide'] as const)expect(row[key],key).toBe(true);
     expect(row.layout).toBe('A I');expect(row.nodes).toBeLessThan(100);

@@ -18,7 +18,11 @@ function geometry(letter:string, ornament:number, pixelation:number, seed:number
   if(derived.size>=384)derived.delete(derived.keys().next().value!);
   derived.set(key,result);return result;
 }
-const widthOf = (letter:string,state:StyleState) => FOLK_GLYPHS[letter.toUpperCase()].width*Number(state.params.scale)+4;
+const widthOf = (letter:string,state:StyleState) => {
+  const glyph=FOLK_GLYPHS[letter.toUpperCase()];
+  // Gallery bearing padding must not inflate the font's word spacing.
+  return (glyph.advance??glyph.width)*Number(state.params.scale)+4;
+};
 function shapeNode(shape:Shape, fill='currentColor'): SVGPathElement {
   return svgElement('path',{d:shape.d,fill:shape.stroke?'none':fill,'fill-rule':'evenodd',...(shape.stroke?{stroke:fill,'stroke-width':shape.stroke,'stroke-linecap':'round','stroke-linejoin':'round'}:{})});
 }
@@ -48,8 +52,8 @@ function renderGlyph({letter,state,layout,instance}:RenderContext):SVGSVGElement
   return svg;
 }
 export const folkOrnamental:AlphabetStyle={
-  id:'folk-ornamental',name:'Folk Ornamental',subtitle:'Authored display forms',
-  description:'Monumental letterforms with rooted folk ornament.',material:'CONTOURS / FOLK',
+  id:'folk-ornamental',name:'Folk Ornamental',subtitle:'Ambicase / carved ornament',
+  description:'Ambicase curves with rooted sprigs, blossoms and carved details.',material:'CONTOURS / FOLK',
   defaults:{ornament:40,pixelation:0,seed:2048,scale:.9,spacing:3,rowSpacing:16,labels:true},
   controls:[
     {type:'range',key:'ornament',label:'Ornament · minimal to dense',min:0,max:100,step:1},

@@ -30,8 +30,14 @@
   outline:none
 }
 
-.pixel:hover .pixel-shape {
-  fill:var(--muted)
+@media(hover:hover) and (pointer:fine) {
+  .pixel:hover .pixel-shape {
+    fill:var(--muted)
+  }
+}
+
+.pixel:active .pixel-shape {
+  fill:var(--accent)
 }
 
 .pixel-outline {

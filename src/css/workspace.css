@@ -5,6 +5,8 @@
   }
   .control-panel {
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
     scrollbar-width: thin;
     scrollbar-color: var(--line) transparent;
     padding-right: 8px;
@@ -114,6 +116,8 @@
 @media (min-width: 1151px) {
   .alphabet:not(.is-focused):not(.word-canvas) {
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
     scrollbar-width: thin;
     padding-right: 10px;
   }

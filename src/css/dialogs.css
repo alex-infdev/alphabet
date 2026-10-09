@@ -26,7 +26,9 @@ dialog {
   border:1px solid var(--line);
   padding:48px;
   width:min(550px,calc(100vw - 32px));
-  max-height:85svh
+  max-height:85svh;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable
 }
 
 dialog::backdrop {

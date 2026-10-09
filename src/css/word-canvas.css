@@ -2,7 +2,7 @@
 .word-input-label { display: flex; align-items: center; gap: 10px; font-size: 11px; }
 .word-input-label input { max-width: 230px; letter-spacing: 2px; }
 #word-help { font-size: 10px; color: var(--muted); }
-.alphabet.word-canvas { display: flex; align-items: center; overflow-x: auto; overflow-y: hidden; padding: 12px 0; min-height: 300px; }
+.alphabet.word-canvas { display: flex; align-items: center; overflow-x: auto; overflow-y: hidden; overscroll-behavior: contain; padding: 12px 0; min-height: 300px; }
 .word-svg { display: block; width: 100%; flex-shrink: 0; max-height: 100%; }
 .pixel { touch-action: none; cursor: grab; }
 .pixel:active { cursor: grabbing; }

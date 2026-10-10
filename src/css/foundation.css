@@ -20,7 +20,17 @@
   --toggle:#d5d7cd;
   --button-hover:#45493c;
   --backdrop:#292b2666;
-  --mono:'Courier New',monospace
+  --mono:'Courier New',monospace;
+  --text-title:clamp(2.625rem,1.875rem + 3.75vw,5.1875rem);
+  --space-gutter:clamp(1.25rem,.65rem + 2.5vw,4rem);
+  --space-intro-start:clamp(2rem,1.5rem + 1.5vw,3.5rem);
+  --space-intro-end:clamp(1.75rem,1.25rem + 1.5vw,3rem);
+  --space-panel:clamp(1rem,.75rem + .75vw,2rem);
+  --header-size:clamp(4.875rem,4.5rem + 1vw,6.5rem);
+  --panel-size:clamp(13.25rem,10rem + 6.5vw,17.75rem);
+  --workspace-size:clamp(30rem,62svh,54rem);
+  --glyph-min:6.5rem;
+  --glyph-art-size:clamp(6rem,5rem + 4vw,10rem)
 }
 
 :root[data-theme=dark] {
@@ -111,7 +121,7 @@ a {
   max-width:1920px;
   min-height:100svh;
   margin:auto;
-  padding:0 48px;
+  padding-inline:var(--space-gutter);
   display:flex;
   flex-direction:column
 }
@@ -121,7 +131,7 @@ main {
 }
 
 .site-header {
-  height:104px;
+  min-height:var(--header-size);
   display:flex;
   align-items:center;
   border-bottom:1px solid var(--line);
@@ -199,7 +209,7 @@ main {
   display:flex;
   justify-content:space-between;
   align-items:flex-end;
-  padding:49px 0 43px;
+  padding-block:var(--space-intro-start) var(--space-intro-end);
   gap:24px
 }
 
@@ -217,10 +227,12 @@ main {
 }
 
 h1 {
-  font-size:clamp(42px,5.6vw,83px);
+  font-size:var(--text-title);
   font-weight:450;
-  letter-spacing:-5px;
+  letter-spacing:-.055em;
   line-height:1.02;
+  min-width:0;
+  overflow-wrap:anywhere;
   margin:0
 }
 
@@ -346,18 +358,8 @@ button:enabled:active {
   font-size:17px
 }
 
-.workspace {
-  display:grid;
-  grid-template-columns:minmax(0,1fr) 254px;
-  min-height:670px
-}
-
-.workspace.panel-hidden {
-  grid-template-columns:1fr
-}
-
 .specimen {
-  padding:22px 30px 0 0;
+  padding:var(--space-panel) var(--space-panel) 0 0;
   min-width:0;
   display:flex;
   flex-direction:column
@@ -408,11 +410,10 @@ button:enabled:active {
 
 .alphabet {
   display:grid;
-  grid-template-columns:repeat(7,minmax(0,1fr));
   column-gap:var(--letter-gap,14px);
   row-gap:var(--row-gap,16px);
   flex:1;
-  align-content:space-evenly;
+  min-height:0;
   padding:7px 0 20px
 }
 
@@ -434,8 +435,7 @@ button:enabled:active {
   display:block;
   width:100%;
   height:auto;
-  overflow:visible;
-  max-height:163px
+  overflow:visible
 }
 
 .glyph-art-button {
@@ -488,7 +488,7 @@ button:enabled:active {
 }
 
 .specimen-colophon {
-  grid-column:span 2;
+  grid-column:1/-1;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -524,7 +524,7 @@ button:enabled:active {
 
 .control-panel {
   border-left:1px solid var(--line);
-  padding:24px 0 22px 25px
+  padding:var(--space-panel) 0 var(--space-panel) var(--space-panel)
 }
 
 .panel-heading {

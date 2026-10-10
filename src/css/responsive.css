@@ -1,48 +1,12 @@
 @media(min-width:1600px) {
-  #app {
-    padding:0 64px
-  }
-  .workspace {
-    grid-template-columns:minmax(0,1fr) 284px
-  }
-  .control-panel {
-    padding-left:32px
-  }
-  .glyph-svg {
-    max-height:190px
-  }
-  .workspace {
-    min-height:800px
-  }
-  .intro {
-    padding:56px 0 48px
-  }
   .control {
     margin-bottom:24px
   }
 }
 
 @media(max-width:1150px) {
-  #app {
-    padding:0 30px
-  }
-  .workspace {
-    grid-template-columns:minmax(0,1fr) 226px
-  }
-  .control-panel {
-    padding-left:20px
-  }
-  .specimen {
-    padding-right:22px
-  }
   .specimen-subtitle,.specimen-divider {
     display:none
-  }
-  .alphabet {
-    grid-template-columns:repeat(6,minmax(0,1fr))
-  }
-  .specimen-colophon {
-    grid-column:span 4
   }
   .shortcuts {
     gap:10px
@@ -53,26 +17,14 @@
   .style-tabs {
     gap:23px
   }
-  h1 {
-    letter-spacing:-3px
-  }
   .intro-copy {
     font-size:12px
   }
 }
 
 @media(max-width:850px) {
-  #app {
-    padding:0 24px
-  }
   .header-note {
     display:none
-  }
-  .site-header {
-    height:84px
-  }
-  .intro {
-    padding:36px 0 30px
   }
   .intro-copy {
     max-width:200px;
@@ -84,9 +36,6 @@
   }
   .tiny-cross {
     padding:0 6px
-  }
-  h1 {
-    font-size:52px
   }
   .nav-tools {
     gap:6px
@@ -110,20 +59,8 @@
   .toggle-label {
     display:none
   }
-  .workspace {
-    grid-template-columns:minmax(0,1fr) 212px
-  }
-  .control-panel {
-    padding-left:17px
-  }
   .panel-heading h2 {
     font-size:17px
-  }
-  .alphabet {
-    grid-template-columns:repeat(4,minmax(0,1fr))
-  }
-  .specimen-colophon {
-    grid-column:span 2
   }
   .specimen-bottom {
     flex-wrap:wrap;
@@ -141,10 +78,6 @@
     max-width:130px;
     line-height:1.7
   }
-  .alphabet.is-focused {
-    padding:25px 0;
-    min-height:450px
-  }
   .glyph-open {
     font-size:9px
   }
@@ -154,12 +87,6 @@
 }
 
 @media(max-width:600px) {
-  #app {
-    padding:0 20px
-  }
-  .site-header {
-    height:78px
-  }
   .brand-mark {
     font-size:47px;
     width:37px
@@ -178,16 +105,11 @@
     margin-left:5px
   }
   .intro {
-    display:block;
-    padding:32px 0 27px
+    display:block
   }
   .intro .eyebrow {
     margin-bottom:15px;
     font-size:10px
-  }
-  h1 {
-    font-size:clamp(42px,11.8vw,68px);
-    letter-spacing:-2.6px
   }
   .intro-copy {
     margin-top:17px;
@@ -231,26 +153,14 @@
   .controls-toggle {
     min-width:18px
   }
-  .workspace {
-    display:flex;
-    flex-direction:column;
-    min-height:0
-  }
   .specimen {
-    padding:20px 0 0
+    padding:var(--space-panel) 0 0
   }
   .specimen-heading {
     margin-bottom:19px
   }
   .alphabet {
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    align-content:start;
-    row-gap:var(--row-gap);
-    column-gap:min(var(--letter-gap),20px);
     padding-bottom:25px
-  }
-  .glyph-svg {
-    max-height:150px
   }
   .glyph-open {
     padding-top:6px
@@ -269,7 +179,7 @@
   .control-panel {
     border-left:0;
     border-top:1px solid var(--line);
-    padding:23px 0 26px
+    padding:var(--space-panel) 0
   }
   .panel-heading h2 {
     font-size:18px
@@ -321,16 +231,6 @@
   }
   .shortcuts>span:last-child {
     display:none
-  }
-  .alphabet.is-focused {
-    min-height:460px;
-    padding:20px 30px
-  }
-  .is-focused .glyph-cell {
-    max-width:300px
-  }
-  .is-focused .glyph-svg {
-    max-height:400px
   }
   .pixel-editor {
     display:grid;

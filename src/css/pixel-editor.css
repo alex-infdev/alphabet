@@ -117,16 +117,16 @@ select {
   grid-template-columns:1fr;
   align-content:center;
   justify-items:center;
-  padding:40px 12%;
-  min-height:550px
+  padding:var(--space-panel) 0;
+  min-height:var(--workspace-size)
 }
 
 .is-focused .glyph-cell {
-  width:min(100%,420px)
+  width:min(100%,26.25rem)
 }
 
 .is-focused .glyph-svg {
-  max-height:520px
+  max-height:32.5rem
 }
 
 .is-focused .glyph-open {

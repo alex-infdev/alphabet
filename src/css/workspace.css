@@ -1,97 +1,28 @@
-@media (min-width: 1151px) {
-  .workspace {
-    height: calc(100svh - 440px);
-    min-height: 520px;
-  }
-  .control-panel {
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-gutter: stable;
-    scrollbar-width: thin;
-    scrollbar-color: var(--line) transparent;
-    padding-right: 8px;
-  }
-  .specimen {
-    min-height: 0;
-  }
-  .alphabet {
-    grid-template-rows: repeat(4, minmax(0, 1fr));
-    min-height: 0;
-  }
-  .glyph-cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-  }
-  .glyph-art-button {
-    flex: 1;
-    min-height: 0;
-  }
-  .glyph-svg {
-    height: 100%;
-    min-height: 0;
-    max-height: none;
-    flex: 1;
-  }
-  .glyph-open {
-    flex-shrink: 0;
-  }
-  .specimen-colophon {
-    align-self: center;
-  }
-  .alphabet.is-focused {
-    grid-template-rows: 1fr;
-    min-height: 0;
-    padding: 15px 12%;
-  }
-  .alphabet.is-focused .glyph-cell {
-    max-width: 420px;
-  }
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--panel-size);
 }
 
-@media (min-width: 1151px) and (max-height: 950px) {
-  .site-header {
-    height: 76px;
-  }
-  .intro {
-    padding: 32px 0 30px;
-  }
-  h1 {
-    font-size: 65px;
-  }
-  .style-nav {
-    min-height: 56px;
-  }
-  .workspace {
-    height: calc(100svh - 340px);
-    min-height: 480px;
-  }
-  .control {
-    margin-bottom: 17px;
-  }
-  .panel-description {
-    margin-bottom: 20px;
-  }
-  .control-panel {
-    padding-top: 20px;
-  }
-  .site-footer {
-    padding: 18px 0;
-  }
+.workspace.panel-hidden {
+  grid-template-columns: minmax(0, 1fr);
 }
 
-@media (max-width: 600px) {
-  .layout-controls {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 28px;
-  }
+/* Only the overview uses intrinsic columns. Focused glyphs and words have their own layouts. */
+.alphabet:not(.is-focused):not(.word-canvas) {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--glyph-min)), 1fr));
+  align-content: start;
 }
 
-/* Three distinct gallery sections share a scrollable specimen on desktop. */
+.alphabet:not(.is-focused):not(.word-canvas) .glyph-cell {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+}
+
+.alphabet:not(.is-focused):not(.word-canvas) .glyph-svg {
+  height: var(--glyph-art-size);
+}
+
 .glyph-section-title {
   grid-column: 1 / -1;
   margin: 10px 0 0;
@@ -102,24 +33,84 @@
   letter-spacing: .06em;
 }
 
-/* Three style names need a second navigation row on narrow screens. */
-@media (max-width: 700px) {
-  .style-nav { flex-wrap: wrap; padding: 12px 0; gap: 10px; }
-  .style-tabs { width: 100%; justify-content: space-between; gap: 8px; }
-  .style-tab { font-size: 10px; gap: 4px; white-space: nowrap; }
-  .nav-tools { margin-left: auto; }
-}
-.alphabet:not(.is-focused):not(.word-canvas) {
-  grid-template-rows: none;
-  align-content: start;
-}
-@media (min-width: 1151px) {
+/* A bounded workspace is shared by tablets and desktops, independent of gallery columns. */
+@media (min-width: 601px) {
+  .workspace {
+    block-size: var(--workspace-size);
+  }
+
+  .specimen {
+    min-block-size: 0;
+  }
+
+  .control-panel,
   .alphabet:not(.is-focused):not(.word-canvas) {
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
     scrollbar-width: thin;
-    padding-right: 10px;
+    scrollbar-color: var(--line) transparent;
   }
-  .alphabet:not(.is-focused):not(.word-canvas) .glyph-cell { height: 134px; }
+
+  .control-panel {
+    padding-right: 8px;
+  }
+
+  .alphabet:not(.is-focused):not(.word-canvas) {
+    padding-inline: 7px;
+  }
+
+  .alphabet.is-focused,
+  .alphabet.word-canvas {
+    min-block-size: 0;
+  }
+
+  .alphabet.is-focused {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .alphabet.is-focused .glyph-cell {
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 26.25rem);
+    height: 100%;
+    min-height: 0;
+  }
+
+  .alphabet.is-focused .glyph-art-button {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .alphabet.is-focused .glyph-svg {
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .alphabet.is-focused .glyph-open {
+    flex-shrink: 0;
+  }
+}
+
+/* Phones keep document scrolling with controls below the specimen. */
+@media (max-width: 600px) {
+  .workspace {
+    --glyph-min: 6rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .layout-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 28px;
+  }
+}
+
+@media (max-width: 700px) {
+  .style-nav { flex-wrap: wrap; padding: 12px 0; gap: 10px; }
+  .style-tabs { width: 100%; justify-content: space-between; gap: 8px; }
+  .style-tab { font-size: 10px; gap: 4px; white-space: nowrap; }
+  .nav-tools { margin-left: auto; }
 }

@@ -9,7 +9,8 @@ const glyphs = Object.fromEntries(Object.entries(charts).map(([letter, chart]) =
   const source = reference.glyphs[letter];
   const rows = {};
   chart.forEach((line, row) => {
-    const cells = [...line].flatMap((cell, col) => cell === '#' ? [[col, col * 32 - 64, row * 32 - 832, 32, 32]] : []);
+    // src/styles/ambicase.ts rebuilds [column, x, y, 32, 32] from the column and row.
+    const cells = [...line].flatMap((cell, col) => cell === '#' ? [col] : []);
     if (cells.length) rows[row] = cells;
   });
   return [letter, { width: source.advance, height: source.bounds.y2 - source.bounds.y1, bounds: source.bounds, rows }];

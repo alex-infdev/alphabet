@@ -9,7 +9,18 @@ export interface AmbicaseGlyph {
   /** row -> [column, x, y, width, height], in font units with SVG-downward y. */
   rows: Record<string, number[][]>;
 }
-export const AMBICASE = data as Record<string, AmbicaseGlyph>;
+type CompactGlyph = Omit<AmbicaseGlyph, 'rows'> & { rows: Record<string, number[]> };
+
+const expand = (glyph: CompactGlyph): AmbicaseGlyph => ({
+  ...glyph,
+  rows: Object.fromEntries(Object.entries(glyph.rows).map(([row, columns]) => [
+    row, columns.map(column => [column, (column - 2) * 32, (Number(row) - 26) * 32, 32, 32]),
+  ])),
+});
+
+export const AMBICASE = Object.fromEntries(
+  Object.entries(data as Record<string, CompactGlyph>).map(([letter, glyph]) => [letter, expand(glyph)]),
+) as Record<string, AmbicaseGlyph>;
 export const FONT_SCALE = 0.13;
 export const BASELINE = 120;
 export const GALLERY_WIDTH = 134;

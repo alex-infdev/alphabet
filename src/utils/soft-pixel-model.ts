@@ -1,7 +1,7 @@
 import type { AddedPixel, StyleState } from '../types.ts';
 import { ambicaseGlyph, FONT_SCALE } from '../styles/ambicase.ts';
 import { glyphKey } from '../styles/characters.ts';
-import { basePixelId, pixelPosition, pixelScale } from './composition.ts';
+import { basePixelId, instanceOf, pixelPosition, pixelScale, validPixelId } from './composition.ts';
 import { seededRandom } from './random.ts';
 
 // The authored charts (letters and symbols) share this font-unit coordinate system.
@@ -12,6 +12,8 @@ export const GRID_TOP = -832 * FONT_SCALE;
 export const GRID_ROWS = 32;
 export const GRID_COLUMNS = 31;
 export const isManualPixel = (id: string): boolean => /:0:m(?:0|[1-9][0-9]{0,3})$/.test(basePixelId(id));
+// Base manual modules are deleted from addedPixels; occurrences can hide them.
+export const validRemovedPixelId = (id: string): boolean => validPixelId(id) && (id.includes('@') || !isManualPixel(id));
 export const validAddedCell = (value: unknown): value is AddedPixel => {
   if (!value || typeof value !== 'object') return false;
   const { row, column } = value as AddedPixel;
@@ -43,7 +45,7 @@ export function softPixelModules(letter: string, state: StyleState, instance?: s
     const jx = manual ? 0 : (random() - .5) * Number(state.params.jitter);
     const jy = manual ? 0 : (random() - .5) * Number(state.params.jitter);
     const rotation = manual ? 0 : (random() - .5) * 2 * Number(state.params.rotation);
-    if (state.removedPixels?.[base]) return;
+    if (state.removedPixels?.[base] || state.removedPixels?.[id]) return;
     const size = Number(state.params.pixelSize) / 13 * pixelScale(state, id);
     const gutter = Number(state.params.gap) * .28;
     modules.push({ id, row, column, left, top, cellWidth, cellHeight,
@@ -87,17 +89,31 @@ export function addPixel(letter: string, state: StyleState, cell: AddedPixel): s
   return id;
 }
 function clearOverrides(state: StyleState, base: string) {
-  for (const entries of [state.edits, state.positions ?? {}]) for (const id of Object.keys(entries)) if (basePixelId(id) === base) delete entries[id];
+  for (const entries of [state.edits, state.positions ?? {}, state.removedPixels ?? {}]) for (const id of Object.keys(entries)) if (basePixelId(id) === base) delete entries[id];
 }
 export function removePixels(state: StyleState, ids: Iterable<string>): void {
   for (const selected of ids) {
+    if (selected.includes('@')) {
+      state.removedPixels ??= {};
+      state.removedPixels[selected] = true;
+      delete state.edits[selected];
+      delete state.positions?.[selected];
+      continue;
+    }
     const base = basePixelId(selected);
+    clearOverrides(state, base);
     if (isManualPixel(base)) delete state.addedPixels?.[base];
     else { state.removedPixels ??= {}; state.removedPixels[base] = true; }
-    clearOverrides(state, base);
   }
 }
-export function resetGlyph(state: StyleState, letter: string): void {
+export function resetGlyph(state: StyleState, letter: string, instance?: string): void {
+  if (instance) {
+    // Restore this occurrence's inherited glyph without changing the shared base.
+    for (const entries of [state.edits, state.positions ?? {}, state.removedPixels ?? {}]) {
+      for (const id of Object.keys(entries)) if (instanceOf(id) === instance) delete entries[id];
+    }
+    return;
+  }
   const prefix = `${glyphKey(letter.toUpperCase())}:`;
   for (const entries of [state.addedPixels ?? {}, state.removedPixels ?? {}, state.edits, state.positions ?? {}]) {
     for (const id of Object.keys(entries)) if (basePixelId(id).startsWith(prefix)) delete entries[id];

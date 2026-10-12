@@ -1,6 +1,6 @@
 import type { AlphabetStyle, Parameters, StyleState } from './types';
 import { cleanWord, validPixelId, pruneWordEdits } from './utils/composition.ts';
-import { isManualPixel, validAddedCell } from './utils/soft-pixel-model.ts';
+import { isManualPixel, validAddedCell, validRemovedPixelId } from './utils/soft-pixel-model.ts';
 
 export const STORAGE_KEY = 'alphabet-lab:v1';
 export type SavedState = { version: 2; activeStyle: string; styles: Record<string, StyleState>; word: string; wordMode: boolean };
@@ -62,7 +62,7 @@ export function initialState(styles: AlphabetStyle[], raw: string | null): Saved
         if (previous?.removedPixels && typeof previous.removedPixels === 'object') {
           state.removedPixels = {};
           for (const [id, removed] of Object.entries(previous.removedPixels)) {
-            if (validPixelId(id) && !id.includes('@') && !isManualPixel(id) && removed === true) state.removedPixels[id] = true;
+            if (validRemovedPixelId(id) && removed === true) state.removedPixels[id] = true;
           }
         }
       }

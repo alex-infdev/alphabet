@@ -2,7 +2,7 @@ import type { AlphabetStyle } from './types';
 import { initialState, type SavedState } from './state.ts';
 import { cleanWord, validPixelId } from './utils/composition.ts';
 import { MAX_TEXT_LENGTH } from './styles/characters.ts';
-import { isManualPixel, validAddedCell } from './utils/soft-pixel-model.ts';
+import { isManualPixel, validAddedCell, validRemovedPixelId } from './utils/soft-pixel-model.ts';
 export function parseConfiguration(text: string, styles: AlphabetStyle[]): SavedState {
   if (text.length > 2_000_000) throw new Error('Configuration is too large (maximum 2 MB).');
   let value;
@@ -39,7 +39,10 @@ export function parseConfiguration(text: string, styles: AlphabetStyle[]): Saved
       const entries = data[field]; if (entries === undefined) continue;
       if (id !== 'soft-pixel' || !entries || typeof entries !== 'object' || Array.isArray(entries)) throw new Error(`${field}: expected a Soft Pixel object.`);
       for (const [key, cell] of Object.entries(entries)) {
-        if (!validPixelId(key) || key.includes('@') || (field === 'addedPixels' ? !isManualPixel(key) || !validAddedCell(cell) : isManualPixel(key) || cell !== true)) throw new Error(`Invalid ${field} for ${key}.`);
+        const valid = field === 'addedPixels'
+          ? validPixelId(key) && !key.includes('@') && isManualPixel(key) && validAddedCell(cell)
+          : validRemovedPixelId(key) && cell === true;
+        if (!valid) throw new Error(`Invalid ${field} for ${key}.`);
       }
     }
   }

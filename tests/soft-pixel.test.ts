@@ -7,6 +7,7 @@ import { configurationJSON, parseConfiguration } from '../src/configuration.ts';
 import { constrainPixelOffset, nudgePixelOffset } from '../src/utils/pixel-grid.ts';
 import { AMBICASE } from '../src/styles/ambicase.ts';
 import { History } from '../src/history.ts';
+import { pruneWordEdits } from '../src/utils/composition.ts';
 
 const fixture: AlphabetStyle = {
   id: 'soft-pixel', name: 'Soft Pixel', subtitle: '', description: '', material: '',
@@ -120,4 +121,64 @@ test('add, remove and move use existing detached undo snapshots', () => {
   edited = history.undo()!; assert.equal(edited.positions?.[id], undefined);
   edited = history.undo()!; assert.equal(edited.addedPixels, undefined);
   edited = history.redo()!; assert.deepEqual(edited.addedPixels?.[id], cell);
+});
+
+test('word deletion preserves base modules and unselected occurrences with their overrides', () => {
+  for (const letter of ['A', ':']) {
+    const edited = state();
+    const base = softPixelModules(letter, edited)[0].id;
+    const first = `w@0:${base}`, second = `w@1:${base}`;
+    edited.edits = { [base]: 1.2, [first]: 1.6, [second]: 1.4 };
+    edited.positions = { [base]: { x: 1, y: 2 }, [first]: { x: 3, y: 4 }, [second]: { x: 5, y: 6 } };
+    const original = softPixelModules(letter, edited);
+    const other = softPixelModules(letter, edited, second.split(':').slice(0, -2).join(':'));
+    removePixels(edited, [first]);
+    assert.deepEqual(softPixelModules(letter, edited), original);
+    assert.deepEqual(softPixelModules(letter, edited, second.split(':').slice(0, -2).join(':')), other);
+    assert.ok(!softPixelModules(letter, edited, first.split(':').slice(0, -2).join(':')).some(module => module.id === first));
+    assert.equal(edited.edits[first], undefined);
+    assert.equal(edited.positions[first], undefined);
+    assert.equal(edited.edits[second], 1.4);
+    assert.equal(edited.edits[base], 1.2);
+  }
+});
+
+test('word manual deletion and reset restore inheritance only for the current occurrence', () => {
+  const edited = state(); const base = addPixel('A', edited, cell)!;
+  const first = `w@0:${base}`, second = `w@1:${base}`;
+  edited.edits = { [base]: 1.2, [first]: 1.6, [second]: 1.4 };
+  edited.positions![second] = { x: CELL_STEP, y: 0 };
+  removePixels(edited, [first]);
+  assert.ok(edited.addedPixels?.[base]);
+  assert.ok(softPixelModules('A', edited, 'w@1:A').some(module => module.id === second));
+  resetGlyph(edited, 'A', 'w@0:A');
+  const restored = softPixelModules('A', edited, 'w@0:A').find(module => module.id === first)!;
+  assert.equal(restored.width, softPixelModules('A', edited).find(module => module.id === base)!.width);
+  assert.equal(edited.edits[second], 1.4);
+  assert.equal(edited.positions![second].x, CELL_STEP);
+  assert.equal(edited.edits[base], 1.2);
+  removePixels(edited, [first]);
+  removePixels(edited, [base]);
+  assert.equal(edited.removedPixels?.[first], undefined, 'reused manual IDs must not inherit stale word removals');
+  assert.equal(addPixel('A', edited, cell), base);
+  assert.ok(softPixelModules('A', edited, 'w@0:A').some(module => module.id === first));
+});
+
+test('occurrence removals roundtrip, prune stale text and retain shared deletions', () => {
+  const saved = initialState([fixture], null); saved.word = 'AA'; saved.wordMode = true;
+  const edited = saved.styles['soft-pixel'];
+  const manual = addPixel('A', edited, cell)!;
+  removePixels(edited, ['w@0:A:6:10', `w@1:${manual}`, 'A:7:10']);
+  assert.deepEqual(initialState([fixture], JSON.stringify(saved)), saved);
+  assert.deepEqual(parseConfiguration(configurationJSON(saved), [fixture]), saved);
+  const history = new History(saved);
+  resetGlyph(edited, 'A', 'w@0:A'); history.record(saved);
+  assert.equal(history.undo()!.styles['soft-pixel'].removedPixels!['w@0:A:6:10'], true);
+  assert.equal(history.redo()!.styles['soft-pixel'].removedPixels!['w@0:A:6:10'], undefined);
+  pruneWordEdits(edited, 'AB');
+  assert.deepEqual(edited.removedPixels, { 'A:7:10': true });
+  for (const bad of ['A:0:m0', 'w@64:A:6:10', 'w@0:A:32:0', 'w@0:u0020:0:0']) {
+    assert.throws(() => parseConfiguration(JSON.stringify({ ...saved, styles: { 'soft-pixel': { ...edited, removedPixels: { [bad]: true } } } }), [fixture]));
+  }
+  assert.throws(() => parseConfiguration(JSON.stringify({ ...saved, styles: { 'soft-pixel': { ...edited, removedPixels: { 'w@0:A:6:10': false } } } }), [fixture]));
 });

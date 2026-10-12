@@ -63,6 +63,14 @@ but have no visible module. Saved parameters are respected, so a previously
 saved radius is not silently changed to the new default. Reset the style to
 apply the new defaults to an existing session.
 
+Word-canvas deletion affects only the selected occurrences. Version 2 state
+stores these flags in `removedPixels` with `w@index:letter:row:column` IDs,
+including inherited manual modules. Reset Glyph in a word clears only the
+current occurrence's overrides, restoring its shared base glyph. Editing or
+resetting a glyph in the alphabet still changes that shared base. Occurrence
+removals survive JSON import, browser storage and SVG word export; replacing
+or removing an occurrence from the text prunes its overrides.
+
 Advance widths, baseline, 16 units of total overhang padding, 134-by-150 gallery
 viewBox, and proportional word/export layout are unchanged. Botanical retains
 its original geometry. Rendering and SVG export use the same tile rectangles.

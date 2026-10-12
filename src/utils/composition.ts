@@ -20,7 +20,7 @@ export const validPixelId = (id: string): boolean => {
 /** Retain only current occurrences; replaced letters cannot inherit unrelated overrides. */
 export function pruneWordEdits(state: StyleState, word: string): void {
   const instances = new Set(wordInstances(word));
-  for (const entries of [state.edits, state.positions ?? {}]) {
+  for (const entries of [state.edits, state.positions ?? {}, state.removedPixels ?? {}]) {
     for (const id of Object.keys(entries)) if (id.includes('@') && !instances.has(instanceOf(id))) delete entries[id];
   }
 }

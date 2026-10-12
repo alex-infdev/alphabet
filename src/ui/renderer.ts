@@ -1,34 +1,25 @@
 import type { AlphabetStyle, StyleState } from '../types';
 import { LETTERS, SYMBOLS, DIGITS, VISIBLE_CHARACTERS, glyphKey } from '../styles/characters';
-
-const cache = new WeakMap<HTMLElement, Map<string, { key: string; cell: HTMLElement }>>();
-
-/** Direct SVG selection/drag updates bypass rendering and must invalidate its snapshots. */
-export function invalidateAlphabet(container: HTMLElement): void { cache.delete(container); }
+import { cachedGlyphs, glyphKeys, reconcileChildren, saveGlyphs } from './glyph-cache';
 
 export function renderAlphabet(container: HTMLElement, style: AlphabetStyle, state: StyleState, selected: Set<string>, focused: string | null): void {
+  const previous = container.classList.contains('word-canvas') ? new Map() : cachedGlyphs(container);
   container.className = `alphabet ${focused ? 'is-focused' : ''} ${state.params.labels ? '' : 'hide-labels'}`;
   container.style.setProperty('--letter-gap', `${state.params.spacing}px`);
   container.style.setProperty('--row-gap', `${state.params.rowSpacing}px`);
-  const previous = cache.get(container) ?? new Map();
-  const next = new Map<string, { key: string; cell: HTMLElement }>();
-  const { spacing: _spacing, rowSpacing: _rowSpacing, labels: _labels, ...geometry } = state.params;
-  const fragment = document.createDocumentFragment();
+  const next: ReturnType<typeof cachedGlyphs> = new Map();
+  const keyFor = glyphKeys(style, state, selected, focused ? 'focused' : 'alphabet');
+  const children: Element[] = [];
   for (const letter of focused ? [focused] : VISIBLE_CHARACTERS) {
     if (!focused && [LETTERS[0], SYMBOLS[0], DIGITS[0]].includes(letter)) {
       const heading = document.createElement('h2'); heading.className = 'glyph-section-title';
       heading.textContent = letter === LETTERS[0] ? 'A–Z' : letter === SYMBOLS[0] ? 'Symbols' : 'Numbers';
-      fragment.append(heading);
+      children.push(heading);
     }
-    const prefix = `${glyphKey(letter)}:`;
-    const key = JSON.stringify([style.id, Boolean(focused), geometry,
-      Object.entries(state.edits).filter(([id]) => id.startsWith(prefix)),
-      Object.entries(state.positions ?? {}).filter(([id]) => id.startsWith(prefix)),
-      Object.entries(state.addedPixels ?? {}).filter(([id]) => id.startsWith(prefix)),
-      Object.keys(state.removedPixels ?? {}).filter(id => id.startsWith(prefix)),
-      [...selected].filter(id => id.startsWith(prefix))]);
-    const cached = previous.get(letter);
-    if (cached?.key === key) { fragment.append(cached.cell); next.set(letter, cached); continue; }
+    const instance = glyphKey(letter);
+    const key = keyFor(instance);
+    const cached = previous.get(instance);
+    if (cached?.key === key) { children.push(cached.element); next.set(instance, cached); continue; }
     const cell = document.createElement('article');
     cell.className = 'glyph-cell';
     cell.dataset.letter = letter;
@@ -48,9 +39,9 @@ export function renderAlphabet(container: HTMLElement, style: AlphabetStyle, sta
       artButton.append(svg); cell.append(artButton);
     } else cell.append(svg);
     cell.append(open);
-    next.set(letter, { key, cell });
-    fragment.append(cell);
+    next.set(instance, { key, element: cell });
+    children.push(cell);
   }
-  container.replaceChildren(fragment);
-  cache.set(container, next);
+  reconcileChildren(container, children);
+  saveGlyphs(container, next);
 }

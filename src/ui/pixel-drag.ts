@@ -6,7 +6,7 @@ export function enablePixelDragging(container: HTMLElement, options: {
   state: () => StyleState;
   selected: () => Set<string>;
   select: (id: string, additive: boolean) => void;
-  changed: () => void;
+  changed: (ids: string[]) => void;
 }): void {
   type Target = { id: string; element: SVGGElement; inverse: DOMMatrix; start: DOMPoint; offset: { x: number; y: number }; previous?: { x: number; y: number } };
   let drag: { pointer: number; id: string; x: number; y: number; moved: boolean; additive: boolean; state: StyleState; targets: Target[] } | null = null;
@@ -62,8 +62,9 @@ export function enablePixelDragging(container: HTMLElement, options: {
     suppressClick = true;
     window.setTimeout(() => { suppressClick = false; }, 0);
     if (container.hasPointerCapture(event.pointerId)) container.releasePointerCapture(event.pointerId);
+    const ids = drag.targets.map(target => target.id);
     drag = null;
-    options.changed();
+    options.changed(ids);
   };
   container.addEventListener('pointerup', finish);
   container.addEventListener('pointercancel', finish);

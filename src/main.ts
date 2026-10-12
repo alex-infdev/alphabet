@@ -9,7 +9,8 @@ import { VISIBLE_CHARACTERS, glyphKey } from './styles/characters';
 import { initialState, sanitizeParams, STORAGE_KEY } from './state';
 import { newSeed, seededRandom } from './utils/random';
 import { createControls } from './ui/controls';
-import { renderAlphabet, invalidateAlphabet } from './ui/renderer';
+import { renderAlphabet } from './ui/renderer';
+import { invalidateGlyphs } from './ui/glyph-cache';
 import { renderWord } from './ui/word-renderer';
 import { enablePixelDragging } from './ui/pixel-drag';
 import { enableGridEditing } from './ui/pixel-grid-editing';
@@ -232,13 +233,15 @@ function focusLetter(letter: string): void {
   if (matchMedia('(max-width: 600px)').matches) el('.specimen').scrollIntoView({ block: 'start' });
 }
 function syncSelectedPixels(): void {
-  invalidateAlphabet(el('#alphabet'));
+  const changed: string[] = [];
   app.querySelectorAll<SVGGElement>('[data-pixel]').forEach(pixel => {
     const isSelected = selection().has(pixel.dataset.pixel!);
+    if (isSelected || pixel.classList.contains('is-selected')) changed.push(pixel.dataset.pixel!);
     pixel.classList.toggle('is-selected', isSelected);
     if (isSelected) pixel.parentNode?.appendChild(pixel);
     if (pixel.hasAttribute('aria-pressed')) pixel.setAttribute('aria-pressed', String(isSelected));
   });
+  invalidateGlyphs(el('#alphabet'), changed);
   updateSelectionUI();
 }
 function selectPixel(id: string, additive: boolean): void {
@@ -273,7 +276,7 @@ function action(name: string): void {
     case 'download-svg': saveSvg(); break;
     case 'word': saved.wordMode = true; focused = null; currentLetter = wordInstances(saved.word)[0]; selection().clear(); updateView(); el<HTMLInputElement>('#word-input').focus(); break;
     case 'delete-pixels': if (style().id === 'soft-pixel' && selection().size) { removePixels(state(), selection()); selection().clear(); updateSelectionUI(); requestDraw(); notify('Selected modules removed'); } break;
-    case 'reset-glyph': if (style().id === 'soft-pixel' && (focused || saved.wordMode)) { resetGlyph(state(), focused ?? letterOf(currentLetter)); selection().clear(); updateSelectionUI(); requestDraw(); notify('Original glyph restored'); } break;
+    case 'reset-glyph': if (style().id === 'soft-pixel' && (focused || saved.wordMode)) { resetGlyph(state(), focused ?? letterOf(currentLetter), saved.wordMode ? currentLetter : undefined); selection().clear(); updateSelectionUI(); requestDraw(); notify(saved.wordMode ? 'Word glyph restored' : 'Original glyph restored'); } break;
     case 'reset-positions': state().positions ??= {}; for (const id of targets()) state().positions![id] = { x: 0, y: 0 }; requestDraw(); notify('Pixel positions restored for the active scope'); break;
     case 'back': { const letter = focused; focused = null; saved.wordMode = false; currentLetter = 'A'; selection().clear(); updateView(); if (letter) [...app.querySelectorAll<HTMLButtonElement>('.glyph-open')].find(button => button.dataset.focus === letter)?.focus({ preventScroll: true }); else el<HTMLButtonElement>('[data-action="word"]').focus({ preventScroll: true }); break; }
     case 'deselect': clearSelection(); break;
@@ -297,21 +300,35 @@ app.addEventListener('click', event => {
 });
 el('#scope').addEventListener('change', event => { scope = (event.target as HTMLSelectElement).value as Scope; updateSelectionUI(); });
 el('#current-letter').addEventListener('change', event => { currentLetter = (event.target as HTMLSelectElement).value; if (focused) { focused = letterOf(currentLetter); updateView(); } else updateSelectionUI(); });
-el('#word-input').addEventListener('input', event => {
-  const input = event.target as HTMLInputElement;
-  const word = cleanWord(input.value);
-  input.value = word;
+const wordInput = el<HTMLInputElement>('#word-input');
+let composingWord = false;
+function commitWord(): void {
+  const input = wordInput;
+  const value = input.value;
+  const word = cleanWord(value);
+  if (word !== value) {
+    const start = cleanWord(value.slice(0, input.selectionStart ?? value.length)).length;
+    const end = cleanWord(value.slice(0, input.selectionEnd ?? value.length)).length;
+    const direction = input.selectionDirection;
+    input.value = word;
+    input.setSelectionRange(start, end, direction ?? 'none');
+  }
   if (!word) { input.setCustomValidity('Enter at least one character.'); return; }
   input.setCustomValidity(''); saved.word = word; for (const state of Object.values(saved.styles)) pruneWordEdits(state, word); currentLetter = wordInstances(word)[0]; selection().clear();
   el('.specimen-subtitle').textContent = `Word / ${word}`;
   updateSelectionUI(); requestDraw();
+}
+wordInput.addEventListener('compositionstart', () => { composingWord = true; });
+wordInput.addEventListener('compositionend', () => { composingWord = false; commitWord(); });
+wordInput.addEventListener('input', event => {
+  if (!composingWord && !(event as InputEvent).isComposing) commitWord();
 });
 el('#word-input').addEventListener('blur', event => {
   const input = event.target as HTMLInputElement;
   if (!input.value) input.value = saved.word;
   input.setCustomValidity('');
 });
-enablePixelDragging(el('#alphabet'), { state, selected: selection, select: selectPixel, changed: () => { invalidateAlphabet(el('#alphabet')); persist(); } });
+enablePixelDragging(el('#alphabet'), { state, selected: selection, select: selectPixel, changed: ids => { invalidateGlyphs(el('#alphabet'), ids); persist(); } });
 enableGridEditing(el('#alphabet'), { state, added(id) {
   history.end(); historyGroup = '';
   draw(); selectPixel(id, false); persist();
